@@ -1,0 +1,12 @@
+.*.un~
+.*.sw[nmop]
+
+build
+dist
+
+tggw
+
+slot*
+TGGW.ini
+
+__pycache__
