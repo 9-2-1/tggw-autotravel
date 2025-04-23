@@ -122,8 +122,8 @@ class Ptyrun:
         self.screen.cursor = screen.Cursor(cur.y, cur.x, cur.hidden)
         return True
 
-    def sendtext(self, text: str) -> None:
-        self.pty.write(text)
+    def sendtext(self, text: bytes) -> None:
+        self.pty.write(text.decode())
 
     def is_running(self) -> bool:
         # Make mypy happy

@@ -8,7 +8,7 @@ class Plugin:
         self.game = game
         self.overlay = overlay.Overlay(game.lines, game.columns)
 
-    def on_key(self, key: str) -> bool:
+    def on_key(self, key: bytes) -> bool:
         return True
 
     def on_mouse(self, mouse: mouseevent.MouseEvent) -> bool:

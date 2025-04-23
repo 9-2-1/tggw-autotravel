@@ -4,8 +4,8 @@ from .. import plugin
 
 
 class Dump(plugin.Plugin):
-    def on_key(self, key: str) -> bool:
-        if key == "D":
+    def on_key(self, key: bytes) -> bool:
+        if key == b"D":
             scr = self.game.screen.data
             tstr = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             fname = f"dump_{tstr}.txt"

@@ -12,7 +12,7 @@ class Test(plugin.Plugin):
         self.change = 0
         self.mousey = 0
         self.mousex = 0
-        self.lastkey = ""
+        self.lastkey = b""
 
     def update(self) -> None:
         self.overlay.clear()
@@ -44,7 +44,7 @@ class Test(plugin.Plugin):
             bg=bg2,
         )
 
-    def on_key(self, key: str) -> bool:
+    def on_key(self, key: bytes) -> bool:
         self.lastkey = key
         self.update()
         return True

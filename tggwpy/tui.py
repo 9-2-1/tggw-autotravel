@@ -7,6 +7,11 @@ import time
 import os
 import signal
 
+if os.name != "nt":
+    import termios
+    import tty
+    import sys
+
 import pytermgui as ptg
 import pytermgui.context_managers as ptgctx
 import colorama
@@ -14,6 +19,7 @@ import colorama
 from . import mouseevent
 from . import screen
 from . import plugin
+from . import getch
 
 
 PtgMouseAction = ptg.ansi_interface.MouseAction
@@ -54,7 +60,7 @@ class TUI:
         self.drawn_screen = screen.Screen(lines, columns)
         self.mouse_translate = mouse_translate
         self.terminal_too_small = False
-        self.tty_data: Queue[str] = Queue()
+        self.tty_data: Queue[bytes] = Queue()
         self.stop = Event()
         # Create a new thread to read input to solve the input lost problem
         # TODO should use some better way to do this
@@ -75,6 +81,10 @@ class TUI:
                     gameui = TUI(lines, columns, mouse_translate=mouse_translate)
                     sigint_func = signal.signal(signal.SIGINT, gameui._tty_read_ctrl_c)
                     if os.name != "nt":
+                        # enable cbreak
+                        descriptor = sys.stdin.fileno()
+                        old_settings = termios.tcgetattr(descriptor)
+                        tty.setcbreak(descriptor)
                         sigtstp_func = signal.signal(
                             signal.SIGTSTP, gameui._tty_read_ctrl_z
                         )
@@ -83,8 +93,12 @@ class TUI:
                     finally:
                         signal.signal(signal.SIGINT, sigint_func)
                         if os.name != "nt":
+                            termios.tcsetattr(
+                                descriptor, termios.TCSADRAIN, old_settings
+                            )
                             signal.signal(signal.SIGTSTP, sigtstp_func)
                         gameui.stop.set()
+                        # feed char to pytermgui so the getch in the other thread returns
                         gameui.tty_read_thread.join()
             # revert terminal size change
             # ptg.terminal.write(f"\x1b[8;{old_lines};{old_columns}t", flush=True)
@@ -94,23 +108,22 @@ class TUI:
     # for linux signal SIGINT
     def _tty_read_ctrl_c(self, _signal: int, _frame: Any) -> None:
         if not self.stop.is_set():
-            self.tty_data.put("\x03")
+            self.tty_data.put(b"\x03")
 
     # for linux signal SIGTSTP
     def _tty_read_ctrl_z(self, _signal: int, _frame: Any) -> None:
         if not self.stop.is_set():
-            self.tty_data.put("\x19")
+            self.tty_data.put(b"\x19")
 
     def _tty_read(self) -> None:
         try:
             while not self.stop.is_set():
                 try:
-                    instr = ptg.getch_timeout(1, interrupts=False)
-                    if instr != "":
+                    instr = getch.getinput()
+                    if instr != b"":
                         self.tty_data.put(instr)
                 except KeyboardInterrupt:
-                    # I don't know why here are interrupt even interrupts=False TODO
-                    self.tty_data.put("\x03")
+                    self.tty_data.put(b"\x03")
         except EOFError:
             pass
 
@@ -210,13 +223,13 @@ class TUI:
 
     def getch(
         self, timeout: float = 0
-    ) -> Optional[Union[str, List[mouseevent.MouseEvent]]]:
+    ) -> Optional[Union[bytes, List[mouseevent.MouseEvent]]]:
         try:
             ch = self.tty_data.get(timeout=timeout)
         except Empty:
             return None
         if self.mouse_translate is not None:
-            events = self.mouse_translate(ch)
+            events = self.mouse_translate(ch.decode(errors="ignore"))
             if events is not None and len(events) != 0:
                 mlist: List[mouseevent.MouseEvent] = []
                 for event in events:

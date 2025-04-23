@@ -4,8 +4,6 @@ import os
 import signal
 import traceback
 
-import pytermgui as ptg
-
 from . import ptyrun
 from . import tui
 from . import plugin
@@ -14,6 +12,7 @@ from . import screen
 from . import errorlog
 from . import overlay
 from . import patch
+from . import getch
 
 from .plugins import linux_pressanykey
 from .plugins import autotravel
@@ -25,19 +24,19 @@ FRAME_TIME = 0.015
 
 # Translate arrow keys to HJKL for linux
 KEYMAP = {
-    "\x1b[A": "k",  # Up
-    "\x1b[B": "j",  # Down
-    "\x1b[C": "l",  # Right
-    "\x1b[D": "h",  # Left
-    "\x1b[1;2A": "K",  # Shift+Up
-    "\x1b[1;2B": "J",  # Shift+Down
-    "\x1b[1;2C": "L",  # Shift+Right
-    "\x1b[1;2D": "H",  # Shift+Left
-    "\r": " ",  # Enter
-    "\n": " ",  # Enter
-    "\b": "z",  # Backspace
-    "\x1b[5~": "[",  # PgUp, patched
-    "\x1b[6~": "]",  # PgDn, patched
+    b"\x1b[A": b"k",  # Up
+    b"\x1b[B": b"j",  # Down
+    b"\x1b[C": b"l",  # Right
+    b"\x1b[D": b"h",  # Left
+    b"\x1b[1;2A": b"K",  # Shift+Up
+    b"\x1b[1;2B": b"J",  # Shift+Down
+    b"\x1b[1;2C": b"L",  # Shift+Right
+    b"\x1b[1;2D": b"H",  # Shift+Left
+    b"\r": b" ",  # Enter
+    b"\n": b" ",  # Enter
+    b"\b": b"z",  # Backspace
+    b"\x1b[5~": b"[",  # PgUp, patched
+    b"\x1b[6~": b"]",  # PgDn, patched
 }
 
 
@@ -109,8 +108,8 @@ def main() -> None:
                                 with errorlog.errorlog():
                                     if not plu.on_mouse(mouseevent):
                                         break
-                    elif isinstance(user_key, str):
-                        if user_key == "\x03":
+                    elif isinstance(user_key, bytes):
+                        if user_key == b"\x03":
                             ctrlc_overlay.clear()
                             if ctrlc:
                                 ctrlc = False
@@ -127,7 +126,7 @@ def main() -> None:
                                 )
                                 ctrlc = True
                                 ctrlz = False
-                        elif os.name != "nt" and user_key == "\x19":
+                        elif os.name != "nt" and user_key == b"\x19":
                             if ctrlz:
                                 ctrlz = False
                                 # suspend!
@@ -164,13 +163,12 @@ def main() -> None:
                 break
         except:
             traceback.print_exc()
-            ptg.terminal.write("Continue? (Y/N)", flush=True)
             while True:
-                conti = ptg.getch_timeout(1)
-                if conti == "N" or conti == "n":
+                ans = input("Continue? (Y/N): ")
+                if ans == "N" or ans == "n":
                     conti = True
                     break
-                if conti == "Y" or conti == "y":
+                if ans == "Y" or ans == "y":
                     conti = False
                     break
             if conti:
@@ -178,6 +176,3 @@ def main() -> None:
     if game.is_running():
         game.terminate()
     game.close()
-
-
-main()
