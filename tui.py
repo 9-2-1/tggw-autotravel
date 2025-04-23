@@ -41,17 +41,17 @@ modemap: Dict[PtgMouseAction, mouseevent.MouseMode] = {
 class TUI:
     def __init__(
         self,
-        columns: int,
         lines: int,
+        columns: int,
         *,
         mouse_translate: Optional[MouseCall] = None,
     ) -> None:
-        self.columns = columns
         self.lines = lines
-        self.last_term_columns = -1
+        self.columns = columns
         self.last_term_lines = -1
-        self.screen = screen.Screen(columns, lines)
-        self.drawn_screen = screen.Screen(columns, lines)
+        self.last_term_columns = -1
+        self.screen = screen.Screen(lines, columns)
+        self.drawn_screen = screen.Screen(lines, columns)
         self.mouse_translate = mouse_translate
         self.terminal_too_small = False
         self.tty_data: Queue[str] = Queue()
@@ -64,7 +64,7 @@ class TUI:
 
     @staticmethod
     @contextmanager
-    def entry(columns: int, lines: int) -> Generator["TUI", None, None]:
+    def entry(lines: int, columns: int) -> Generator["TUI", None, None]:
         colorama.just_fix_windows_console()  # in case windows 7
         with ptg.win32console.enable_virtual_processing():
             # old_columns, old_lines = os.get_terminal_size()
@@ -72,7 +72,7 @@ class TUI:
             # ptg.terminal.write(f"\x1b[8;{lines};{columns}t", flush=True)
             with ptgctx.alt_buffer():
                 with ptgctx.mouse_handler(["all"]) as mouse_translate:
-                    gameui = TUI(columns, lines, mouse_translate=mouse_translate)
+                    gameui = TUI(lines, columns, mouse_translate=mouse_translate)
                     sigint_func = signal.signal(signal.SIGINT, gameui._tty_read_ctrl_c)
                     if os.name != "nt":
                         sigtstp_func = signal.signal(
@@ -116,7 +116,7 @@ class TUI:
 
     def redraw(self) -> None:
         term_columns, term_lines = os.get_terminal_size()
-        if self.last_term_columns != term_columns or self.last_term_lines != term_lines:
+        if self.last_term_lines != term_lines or self.last_term_columns != term_columns:
             self.full_redraw()
             return
         if self.terminal_too_small:
@@ -168,7 +168,7 @@ class TUI:
         self.last_term_columns = term_columns
         self.last_term_lines = term_lines
         self.terminal_too_small = False
-        if term_columns < self.columns or term_lines < self.lines:
+        if term_lines < self.lines or term_columns < self.columns:
             self.terminal_too_small = True
             ptg.terminal.write(
                 "\x1b[2J\x1b[H\x1b[m\x1b[?25h"

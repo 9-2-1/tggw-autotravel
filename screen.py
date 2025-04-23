@@ -18,14 +18,14 @@ class Cursor:
 
 
 class Screen:
-    def __init__(self, columns: int, lines: int) -> None:
-        self.columns = columns
+    def __init__(self, lines: int, columns: int) -> None:
         self.lines = lines
+        self.columns = columns
         self.data = [[Char(" ", 7, 0) for x in range(columns)] for y in range(lines)]
         self.cursor = Cursor()
 
     def findtext(self, text: str) -> List[Tuple[int, int]]:
-        return self.findtextrange(0, 0, self.columns, self.lines, text)
+        return self.findtextrange(0, 0, self.lines, self.columns, text)
 
     def findtextrange(
         self, y: int, x: int, h: int, w: int, text: str, *, fg: int = -1, bg: int = -1

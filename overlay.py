@@ -4,9 +4,9 @@ import screen
 
 
 class Overlay:
-    def __init__(self, columns: int, lines: int) -> None:
-        self.columns = columns
+    def __init__(self, lines: int, columns: int) -> None:
         self.lines = lines
+        self.columns = columns
         self.data: List[List[Optional[screen.Char]]] = [
             [None for x in range(columns)] for y in range(lines)
         ]

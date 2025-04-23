@@ -65,17 +65,16 @@ class Ptyrun:
     The original game runner
     """
 
-    def __init__(self, command: List[str], columns: int, lines: int) -> None:
-        self.columns = columns
+    def __init__(self, command: List[str], lines: int, columns: int) -> None:
         self.lines = lines
+        self.columns = columns
 
         self.pty_data: Queue[str] = Queue()
         self.stop = Event()
 
         if os.name == "nt":
             self.pty = winpty.PtyProcess.spawn(command)
-            # self.pty.setwinsize(lines, columns)
-            self.pty.setwinsize(52, columns)
+            self.pty.setwinsize(lines, columns)
         else:
             self.pty = ptyprocess.PtyProcessUnicode.spawn(
                 command, dimensions=(lines, columns)
@@ -84,7 +83,7 @@ class Ptyrun:
         self.pty_screen = pyte.Screen(columns, lines)
         self.pty_stream = pyte.Stream(self.pty_screen)
 
-        self.screen = screen.Screen(columns, lines)
+        self.screen = screen.Screen(lines, columns)
 
         self.pty_read_thread = Thread(target=self._pty_read, daemon=True)
         self.pty_read_thread.start()

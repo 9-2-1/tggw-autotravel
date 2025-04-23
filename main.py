@@ -20,7 +20,6 @@ import plugins.autotravel
 import plugins.test
 import plugins.dump
 
-
 CYCLE_TIME = 0.01
 FRAME_TIME = 0.015
 
@@ -48,9 +47,11 @@ def main() -> None:
         TGGW = [r"tggw\tggw-patched.exe"]
     else:
         TGGW = ["wine", "cmd", "/c", "tggw-wine.cmd"]
-    columns = 92
+    # game refused to run under 52 lines even only need 38
+    real_lines = 52
     lines = 38
-    game = ptyrun.Ptyrun(TGGW, columns, lines)
+    columns = 92
+    game = ptyrun.Ptyrun(TGGW, real_lines, columns)
     plugin_list: List[plugin.Plugin] = [
         x(game)
         for x in [
@@ -65,10 +66,10 @@ def main() -> None:
     while True:
         suspend = False
         try:
-            with tui.TUI.entry(columns, lines) as gameui:
+            with tui.TUI.entry(lines, columns) as gameui:
                 ctrlc = False
                 ctrlz = False
-                ctrlc_overlay = overlay.Overlay(columns, lines)
+                ctrlc_overlay = overlay.Overlay(lines, columns)
                 while game.is_running():
                     modified = game.update_screen()
                     if modified:
