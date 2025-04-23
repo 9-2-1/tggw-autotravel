@@ -10,3 +10,8 @@ slot*
 TGGW.ini
 
 __pycache__
+
+*.lnk
+
+main.spec
+error.log

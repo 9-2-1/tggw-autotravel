@@ -1,6 +1,4 @@
 from typing import List, Tuple
-import tui
-import pyte
 import os
 from threading import Thread, Event
 from queue import Queue
@@ -9,8 +7,12 @@ if os.name == "nt":
     import winpty
 else:
     import ptyprocess
+import pyte
 
-def _color16(color: str, default: int) -> int:
+import screen
+
+
+def color16(color: str, default: int) -> int:
     colors = {
         "default": default,
         "000000": 0,
@@ -58,72 +60,74 @@ def _color16(color: str, default: int) -> int:
     return bright * 8 + bbit * 4 + gbit * 2 + rbit
 
 
-class TGGW:
+class Ptyrun:
     """
-    The original game
+    The original game runner
     """
 
-    def __init__(self, command: List[str], columns: int = 92, lines: int = 38) -> None:
-        self.lines = lines
+    def __init__(self, command: List[str], columns: int, lines: int) -> None:
         self.columns = columns
+        self.lines = lines
 
         self.pty_data: Queue[str] = Queue()
         self.stop = Event()
 
         if os.name == "nt":
             self.pty = winpty.PtyProcess.spawn(command)
-            self.pty.setwinsize(columns, lines)
+            # self.pty.setwinsize(lines, columns)
+            self.pty.setwinsize(52, columns)
         else:
-            self.pty = ptyprocess.PtyProcessUnicode.spawn(command, dimensions=(lines, columns))
+            self.pty = ptyprocess.PtyProcessUnicode.spawn(
+                command, dimensions=(lines, columns)
+            )
 
         self.pty_screen = pyte.Screen(columns, lines)
         self.pty_stream = pyte.Stream(self.pty_screen)
 
-        self.pty_read_thread = Thread(target=self.pty_read, daemon=True)
+        self.screen = screen.Screen(columns, lines)
+
+        self.pty_read_thread = Thread(target=self._pty_read, daemon=True)
         self.pty_read_thread.start()
 
-    def pty_read(self) -> None:
+    def _pty_read(self) -> None:
         try:
             while self.pty.isalive() and not self.stop.is_set():
-                instr = self.pty.read(10000)
+                instr = self.pty.read()
                 if instr != "":
                     self.pty_data.put(instr)
         except EOFError:
             pass
 
-    def update_screen(self, screen: tui.Screen) -> List[Tuple[int, int]]:
+    def update_screen(self) -> bool:
         """
-        apply new pty updates to tui.Screen, return modified text location
+        Apply new pty updates to screen.Screen
+        Return true if there are new updates
         """
         modified_list: List[Tuple[int, int]] = []
         self.pty_screen.dirty.clear()
+        if self.pty_data.empty():
+            return False
+        pty_text = ""
         while not self.pty_data.empty():
-            pty_text = self.pty_data.get()
-            self.pty_stream.feed(pty_text)
+            pty_text += self.pty_data.get()
+        self.pty_stream.feed(pty_text)
         for y in self.pty_screen.dirty:
-            screen_line = screen.data[y]
-            pty_line = self.pty_screen.buffer[y]
             for x in range(self.columns):
-                screen_char = screen_line[x]
-                pty_char = pty_line[x]
+                pty_char = self.pty_screen.buffer[y][x]
                 text = pty_char.data
-                fg = _color16(pty_char.fg, default=7)
-                bg = _color16(pty_char.bg, default=0)
-                new_char = tui.Char(text, fg, bg)
-                if screen_char != new_char:
-                    screen_line[x] = new_char
-                    modified_list.append((y, x))
-        screen.cursor = tui.Cursor(
-            self.pty_screen.cursor.y,
-            self.pty_screen.cursor.x,
-            self.pty_screen.cursor.hidden,
-        )
-        return modified_list
+                fg = color16(pty_char.fg, default=7)
+                bg = color16(pty_char.bg, default=0)
+                new_char = screen.Char(text, fg, bg)
+                self.screen.data[y][x] = new_char
+        cur = self.pty_screen.cursor
+        self.screen.cursor = screen.Cursor(cur.y, cur.x, cur.hidden)
+        return True
 
     def sendtext(self, text: str) -> None:
         self.pty.write(text)
 
     def is_running(self) -> bool:
+        # Make mypy happy
         return bool(self.pty.isalive())
 
     def terminate(self) -> None:
