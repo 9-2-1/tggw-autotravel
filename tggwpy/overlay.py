@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-import screen
+from . import screen
 
 
 class Overlay:

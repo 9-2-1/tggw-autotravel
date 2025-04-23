@@ -1,6 +1,6 @@
 import datetime
 
-import plugin
+from .. import plugin
 
 
 class Dump(plugin.Plugin):

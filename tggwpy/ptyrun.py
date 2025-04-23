@@ -9,7 +9,7 @@ else:
     import ptyprocess
 import pyte
 
-import screen
+from . import screen
 
 
 def color16(color: str, default: int) -> int:

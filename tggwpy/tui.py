@@ -10,10 +10,10 @@ import signal
 import pytermgui as ptg
 import pytermgui.context_managers as ptgctx
 import colorama
-import mouseevent
 
-import screen
-import plugin
+from . import mouseevent
+from . import screen
+from . import plugin
 
 
 PtgMouseAction = ptg.ansi_interface.MouseAction

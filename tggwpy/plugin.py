@@ -1,6 +1,6 @@
-import ptyrun
-import mouseevent
-import overlay
+from . import ptyrun
+from . import mouseevent
+from . import overlay
 
 
 class Plugin:

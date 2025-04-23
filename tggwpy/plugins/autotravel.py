@@ -2,10 +2,10 @@ from typing import Dict, Tuple, List
 from enum import Enum
 from dataclasses import dataclass
 
-import ptyrun
-import plugin
-import mouseevent
-import screen
+from .. import ptyrun
+from .. import plugin
+from .. import mouseevent
+from .. import screen
 
 
 class MapType(Enum):

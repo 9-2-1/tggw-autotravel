@@ -1,8 +1,8 @@
 import datetime
 
-import ptyrun
-import plugin
-import mouseevent
+from .. import ptyrun
+from .. import plugin
+from .. import mouseevent
 
 
 class Test(plugin.Plugin):
