@@ -1,7 +1,6 @@
 from copy import deepcopy
 from typing import Dict, List, Optional, Callable, Generator, Tuple, Union, Any
-from queue import Queue, Empty
-from threading import Thread, Event
+from threading import Event
 from contextlib import contextmanager
 import time
 import os
@@ -14,6 +13,7 @@ if os.name != "nt":
 
 import pytermgui as ptg
 import pytermgui.context_managers as ptgctx
+
 if os.name == "nt":
     import colorama
 
@@ -61,12 +61,10 @@ class TUI:
         self.drawn_screen = screen.Screen(lines, columns)
         self.mouse_translate = mouse_translate
         self.terminal_too_small = False
-        self.tty_data: Queue[bytes] = Queue()
-        self.stop = Event()
+        self.ctrlc = Event()
+        self.ctrlz = Event()
         # Create a new thread to read input to solve the input lost problem
         # TODO should use some better way to do this
-        self.tty_read_thread = Thread(target=self._tty_read, daemon=True)
-        self.tty_read_thread.start()
         self.plugins: List[plugin.Plugin] = []
 
     @staticmethod
@@ -99,9 +97,6 @@ class TUI:
                                 descriptor, termios.TCSADRAIN, old_settings
                             )
                             signal.signal(signal.SIGTSTP, sigtstp_func)
-                        gameui.stop.set()
-                        # feed char to pytermgui so the getch in the other thread returns
-                        gameui.tty_read_thread.join()
             # revert terminal size change
             # ptg.terminal.write(f"\x1b[8;{old_lines};{old_columns}t", flush=True)
             # show the cursor
@@ -109,27 +104,11 @@ class TUI:
 
     # for linux signal SIGINT
     def _tty_read_ctrl_c(self, _signal: int, _frame: Any) -> None:
-        if not self.stop.is_set():
-            self.tty_data.put(b"\x03")
+        self.ctrlc.set()
 
     # for linux signal SIGTSTP
     def _tty_read_ctrl_z(self, _signal: int, _frame: Any) -> None:
-        if not self.stop.is_set():
-            self.tty_data.put(b"\x19")
-
-    def _tty_read(self) -> None:
-        try:
-            while not self.stop.is_set():
-                try:
-                    instr = getch.getinput()
-                    if instr != b"":
-                        self.tty_data.put(instr)
-                    else:
-                        time.sleep(0.01)
-                except KeyboardInterrupt:
-                    self.tty_data.put(b"\x03")
-        except EOFError:
-            pass
+        self.ctrlz.set()
 
     def redraw(self) -> None:
         term_columns, term_lines = os.get_terminal_size()
@@ -228,9 +207,14 @@ class TUI:
     def getch(
         self, timeout: float = 0
     ) -> Optional[Union[bytes, List[mouseevent.MouseEvent]]]:
-        try:
-            ch = self.tty_data.get(timeout=timeout)
-        except Empty:
+        if self.ctrlc.is_set():
+            self.ctrlc.clear()
+            return b"\x03"
+        if self.ctrlz.is_set():
+            self.ctrlz.clear()
+            return b"\x03"
+        ch = getch.getinput()
+        if ch == b"":
             return None
         if self.mouse_translate is not None:
             events = self.mouse_translate(ch.decode(errors="ignore"))

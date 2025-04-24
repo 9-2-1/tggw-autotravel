@@ -165,8 +165,9 @@ def main() -> None:
                 break
         except:
             traceback.print_exc()
+            print("Continue? (Y/N): ", end="", flush=True)
+            ans = b""
             while True:
-                print("Continue? (Y/N): ", end="", flush=True)
                 ans = getch.getinput()
                 if ans == b"N" or ans == b"n":
                     conti = True
@@ -174,6 +175,7 @@ def main() -> None:
                 if ans == b"Y" or ans == b"y":
                     conti = False
                     break
+            print(ans)
             if conti:
                 break
     if game.is_running():
