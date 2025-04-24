@@ -1,5 +1,6 @@
 from typing import List, Tuple
 import os
+import time
 from threading import Thread, Event
 from queue import Queue
 
@@ -94,6 +95,8 @@ class Ptyrun:
                 instr = self.pty.read()
                 if instr != "":
                     self.pty_data.put(instr)
+                else:
+                    time.sleep(0.01)
         except EOFError:
             pass
 

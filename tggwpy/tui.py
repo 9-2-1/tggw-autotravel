@@ -14,7 +14,8 @@ if os.name != "nt":
 
 import pytermgui as ptg
 import pytermgui.context_managers as ptgctx
-import colorama
+if os.name == "nt":
+    import colorama
 
 from . import mouseevent
 from . import screen
@@ -71,7 +72,8 @@ class TUI:
     @staticmethod
     @contextmanager
     def entry(lines: int, columns: int) -> Generator["TUI", None, None]:
-        colorama.just_fix_windows_console()  # in case windows 7
+        if os.name == "nt":
+            colorama.just_fix_windows_console()  # in case windows 7
         with ptg.win32console.enable_virtual_processing():
             # old_columns, old_lines = os.get_terminal_size()
             # try to change terminal size
@@ -122,6 +124,8 @@ class TUI:
                     instr = getch.getinput()
                     if instr != b"":
                         self.tty_data.put(instr)
+                    else:
+                        time.sleep(0.01)
                 except KeyboardInterrupt:
                     self.tty_data.put(b"\x03")
         except EOFError:

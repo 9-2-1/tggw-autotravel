@@ -15,3 +15,5 @@ __pycache__
 
 main.spec
 error.log
+
+dump_*.txt

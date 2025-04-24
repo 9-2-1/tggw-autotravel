@@ -115,6 +115,8 @@ def main() -> None:
                                 ctrlc = False
                                 ctrlc_overlay.clear()
                                 game.terminate()
+                                suspend = False
+                                break
                             else:
                                 ctrlc_overlay.clear()
                                 ctrlc_overlay.write(
@@ -164,11 +166,12 @@ def main() -> None:
         except:
             traceback.print_exc()
             while True:
-                ans = input("Continue? (Y/N): ")
-                if ans == "N" or ans == "n":
+                print("Continue? (Y/N): ", end="", flush=True)
+                ans = getch.getinput()
+                if ans == b"N" or ans == b"n":
                     conti = True
                     break
-                if ans == "Y" or ans == "y":
+                if ans == b"Y" or ans == b"y":
                     conti = False
                     break
             if conti:
