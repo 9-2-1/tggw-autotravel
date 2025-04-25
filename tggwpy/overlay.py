@@ -20,7 +20,15 @@ class Overlay:
                 self.data[y][x] = None
 
     def fill(
-        self, y: int, x: int, h: int, w: int, *, fg: int, bg: int, fillchar: str = " "
+        self,
+        y: int,
+        x: int,
+        h: int,
+        w: int,
+        *,
+        fg: int = 7,
+        bg: int = 0,
+        fillchar: str = " "
     ) -> None:
         y0 = y
         x0 = x
@@ -39,6 +47,10 @@ class Overlay:
         y0 = y
         x0 = x
         for c in text:
+            if c == "\n":
+                y += 1
+                x = x0
+                continue
             self.data[y][x] = screen.Char(c, fg, bg)
             x += 1
             if x >= x0 + w:

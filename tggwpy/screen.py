@@ -67,3 +67,43 @@ class Screen:
                     break
             ret += char.text
         return ret
+
+    def __str__(self) -> str:
+        scr = self.data
+        ret = "text:\n"
+        ret += "\n".join("".join(char.text for char in line) for line in scr)
+        ret += "\nfg:\n"
+        ret += "\n".join(
+            "".join("0123456789ABCDEF"[char.fg] for char in line) for line in scr
+        )
+        ret += "\nbg:\n"
+        ret += "\n".join(
+            "".join("0123456789ABCDEF"[char.bg] for char in line) for line in scr
+        )
+        return ret
+
+    @staticmethod
+    def parse(data: str) -> "Screen":
+        lines = [line.replace("\r", "") for line in data.split("\n")]
+        if lines[0] != "text:":
+            raise ValueError("missing text:")
+        scr_columns = len(lines[1])
+        scr_lines = 0
+        for i, line in enumerate(lines):
+            if line == "fg:":
+                scr_lines = i - 1
+                break
+        if scr_lines == 0:
+            raise ValueError("missing fg:")
+        if lines[2 + scr_lines * 2] != "bg:":
+            raise ValueError("missing bg:")
+        ret = Screen(scr_lines, scr_columns)
+        for y in range(scr_lines):
+            for x in range(scr_columns):
+                char_text = lines[1 + y][x]
+                char_fg = lines[2 + scr_lines + y][x]
+                char_bg = lines[3 + scr_lines * 2 + y][x]
+                ret.data[y][x] = Char(
+                    text=char_text, fg=int(char_fg, 16), bg=int(char_bg, 16)
+                )
+        return ret

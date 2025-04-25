@@ -1,3 +1,3 @@
 import tggwpy.main
 
-tggwpy.main.main()
+tggwpy.main.TGGW().run()

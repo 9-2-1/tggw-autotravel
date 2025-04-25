@@ -126,7 +126,7 @@ class Ptyrun:
         return True
 
     def sendtext(self, text: bytes) -> None:
-        self.pty.write(text.decode())
+        self.pty.write(text.decode(errors="ignore"))
 
     def is_running(self) -> bool:
         # Make mypy happy

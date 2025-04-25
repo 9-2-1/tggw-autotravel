@@ -8,21 +8,8 @@ from .. import mouseevent
 from .. import screen
 
 
-class MapType(Enum):
-    Ground = 0
-    Door = 1
-    Wall = 2
-
-
-List[List[MapType]]
-
-List[List[bool]]
-
-
 class AutoTravel(plugin.Plugin):
-    def __init__(self, game: ptyrun.Ptyrun) -> None:
-        super().__init__(game)
-
+    def __plugin_init__(self) -> None:
         self.autoexplore = False
         self.debug = False
         self.in_play = False
@@ -34,14 +21,15 @@ class AutoTravel(plugin.Plugin):
         # combat mode escape
         # ! mark passable escape
 
-        # self.curmap = nerimap(self.game.screen)
+        # self.curmap = nerimap(scr)
 
     def is_play(self) -> bool:
-        seen_pane_title = self.game.screen.readtext(0, 64, end="-")
-        items_pane_title = self.game.screen.readtext(1, 65, end="-")
-        have_continue = self.game.screen.findtextrange(1, 1, 20, 60, "' to continue. ")
-        map_title = self.game.screen.readtext(0, 2, end="-")
-        cursor = self.game.screen.cursor
+        scr = self.tggw.game_screen()
+        seen_pane_title = scr.readtext(0, 64, end="-")
+        items_pane_title = scr.readtext(1, 65, end="-")
+        have_continue = scr.findtextrange(1, 1, 20, 60, "' to continue. ")
+        map_title = scr.readtext(0, 2, end="-")
+        cursor = scr.cursor
         if (
             seen_pane_title == "Seen"
             and items_pane_title == "Items"
@@ -80,9 +68,10 @@ class AutoTravel(plugin.Plugin):
             # brown ~
             # avoid terrain
 
+            scr = self.tggw.game_screen()
             for y in range(1, 21):
                 for x in range(1, 61):
-                    ch0 = self.game.screen.data[y][x]
+                    ch0 = scr.data[y][x]
                     bg = ch0.bg
                     if ch0.text == " ":
                         bg = 2

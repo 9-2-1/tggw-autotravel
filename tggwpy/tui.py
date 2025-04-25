@@ -4,7 +4,6 @@ from threading import Event
 from contextlib import contextmanager
 import time
 import os
-import signal
 
 if os.name != "nt":
     import termios
@@ -61,8 +60,6 @@ class TUI:
         self.drawn_screen = screen.Screen(lines, columns)
         self.mouse_translate = mouse_translate
         self.terminal_too_small = False
-        self.ctrlc = Event()
-        self.ctrlz = Event()
         # Create a new thread to read input to solve the input lost problem
         # TODO should use some better way to do this
         self.plugins: List[plugin.Plugin] = []
@@ -79,36 +76,22 @@ class TUI:
             with ptgctx.alt_buffer():
                 with ptgctx.mouse_handler(["all"]) as mouse_translate:
                     gameui = TUI(lines, columns, mouse_translate=mouse_translate)
-                    sigint_func = signal.signal(signal.SIGINT, gameui._tty_read_ctrl_c)
                     if os.name != "nt":
-                        # enable cbreak
+                        # enable raw
                         descriptor = sys.stdin.fileno()
                         old_settings = termios.tcgetattr(descriptor)
-                        tty.setcbreak(descriptor)
-                        sigtstp_func = signal.signal(
-                            signal.SIGTSTP, gameui._tty_read_ctrl_z
-                        )
+                        tty.setraw(descriptor)
                     try:
                         yield gameui
                     finally:
-                        signal.signal(signal.SIGINT, sigint_func)
                         if os.name != "nt":
                             termios.tcsetattr(
                                 descriptor, termios.TCSADRAIN, old_settings
                             )
-                            signal.signal(signal.SIGTSTP, sigtstp_func)
             # revert terminal size change
             # ptg.terminal.write(f"\x1b[8;{old_lines};{old_columns}t", flush=True)
             # show the cursor
             ptg.terminal.write("\x1b[?25h", flush=True)
-
-    # for linux signal SIGINT
-    def _tty_read_ctrl_c(self, _signal: int, _frame: Any) -> None:
-        self.ctrlc.set()
-
-    # for linux signal SIGTSTP
-    def _tty_read_ctrl_z(self, _signal: int, _frame: Any) -> None:
-        self.ctrlz.set()
 
     def redraw(self) -> None:
         term_columns, term_lines = os.get_terminal_size()
@@ -168,9 +151,11 @@ class TUI:
             self.terminal_too_small = True
             ptg.terminal.write(
                 "\x1b[2J\x1b[H\x1b[m\x1b[?25h"
-                "Your terminal size is too small, please resize your terminal window.\n"
-                f"Lines: {term_lines}/{self.lines}\n"
-                f"Columns: {term_columns}/{self.columns}",
+                "Your terminal size is too small, please resize your terminal window.\r\n"
+                f"Lines: {term_lines}/{self.lines}\r\n"
+                f"Columns: {term_columns}/{self.columns}\r\n"
+                "\r\n"
+                "Press Ctrl+C to force quit (progress will lost).",
                 flush=True,
             )
             return
@@ -193,7 +178,7 @@ class TUI:
             refresh_line_str.append(line_str)
         refresh_str = (
             "\x1b[?25l\x1b[H"  # hide cursor and move to home
-            + "\x1b[m\x1b[K\n".join(refresh_line_str)
+            + "\x1b[m\x1b[K\r\n".join(refresh_line_str)
             + "\x1b[m\x1b[0J"
         )
         # position
@@ -207,12 +192,6 @@ class TUI:
     def getch(
         self, timeout: float = 0
     ) -> Optional[Union[bytes, List[mouseevent.MouseEvent]]]:
-        if self.ctrlc.is_set():
-            self.ctrlc.clear()
-            return b"\x03"
-        if self.ctrlz.is_set():
-            self.ctrlz.clear()
-            return b"\x03"
         ch = getch.getinput()
         if ch == b"":
             return None

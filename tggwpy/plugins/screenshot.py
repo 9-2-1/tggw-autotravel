@@ -1,0 +1,145 @@
+import datetime
+import glob
+import traceback
+from typing import List
+import os
+
+from .. import plugin
+
+
+class Screenshot(plugin.Plugin):
+    def __plugin_init__(self) -> None:
+        self.show_hint_time = 0
+        self.replay_mode = False
+        self.replay_list: List[str] = []
+        self.replay_pos = 0
+        self.press_delete = False
+
+    def on_key(self, key: bytes) -> bool:
+        if not self.replay_mode:
+            if key in [b"q", b"Q"]:
+                # capture screenshot
+                if key == b"q":
+                    scr = self.tggw.tui_screen()
+                else:
+                    # capture real screen
+                    scr = self.tggw.game_screen()
+                tstr = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                fname = f"tggw_{tstr}"
+                if key == b"Q":
+                    fname = fname + "_original"
+                fname0 = fname
+                counter = 1
+                while os.path.exists(f"{fname}.txt"):
+                    counter += 1
+                    fname = f"{fname0}_{counter}"
+                fname = f"{fname}.txt"
+                self.overlay.clear()
+                self.overlay.write(0, 0, f'Screenshot saved to "{fname}"', fg=0, bg=10)
+                self.show_hint_time = 300
+                with open(fname, "w") as file:
+                    file.write(str(scr))
+                return False
+            elif key == b"w":
+                # enter replay mode
+                self.replay_mode = True
+                self.replay_list = glob.glob("tggw_*.txt")
+                # reverse sort
+                self.replay_list.sort(reverse=True)
+                self.replay_pos = 0
+                self.replay()
+                return False
+        else:
+            # replay mode
+            if key in [b"x", b"k", b"h", b"\x1b[A", b"\x1b[D"]:
+                # prev
+                self.replay_pos -= 1
+                if self.replay_pos == -1:
+                    self.replay_pos = 0
+                    self.replay(noshowtitle=True)
+                    self.overlay.write(
+                        0, 0, "This is the newest screenshot.", fg=0, bg=10
+                    )
+                    self.show_hint_time = 300
+                else:
+                    self.replay()
+            elif key in [b"w", b"j", b"l", b"\x1b[B", b"\x1b[C"]:
+                # next
+                self.replay_pos += 1
+                if self.replay_pos == len(self.replay_list):
+                    self.replay_pos -= 1
+                    self.replay(noshowtitle=True)
+                    self.overlay.write(
+                        0, 0, "This is the oldest screenshot.", fg=0, bg=10
+                    )
+                    self.show_hint_time = 300
+                else:
+                    self.replay()
+            elif key in [b"d"]:
+                if self.press_delete:
+                    fname = self.replay_list.pop(self.replay_pos)
+                    os.unlink(fname)
+                    if self.replay_pos == len(self.replay_list):
+                        self.replay_pos -= 1
+                    self.replay()
+                    self.press_delete = False
+                else:
+                    self.replay(noshowtitle=True)
+                    self.press_delete = True
+                    self.overlay.write(0, 0, "Press 'd' again to delete", fg=0, bg=11)
+                    self.show_hint_time = 300
+            elif key in [b"z", b"\x1b"]:
+                self.overlay.clear()
+                self.replay_mode = False
+            if key not in [b"d"]:
+                self.press_delete = False
+            return False
+        return True
+
+    def on_display(self) -> None:
+        if self.show_hint_time > 0:
+            self.show_hint_time -= 1
+            if self.show_hint_time == 0:
+                self.overlay.clear()
+                self.press_delete = False
+                if self.replay_mode:
+                    self.replay(noshowtitle=True)
+
+    def replay(self, *, noshowtitle: bool = False) -> None:
+        if len(self.replay_list) == 0:
+            self.replay_mode = False
+            self.overlay.clear()
+            self.overlay.write(0, 0, "No screenshot found", fg=0, bg=11)
+            self.show_hint_time = 300
+        fname = self.replay_list[self.replay_pos]
+        self.overlay.fill(0, 0, self.overlay.lines, self.overlay.columns, fillchar=" ")
+        with open(fname, "r") as file:
+            try:
+                scr = plugin.Screen.parse(file.read())
+                for y in range(scr.lines):
+                    for x in range(scr.columns):
+                        self.overlay.data[y][x] = scr.data[y][x]
+            except:
+                self.overlay.write_rect(
+                    0,
+                    0,
+                    self.overlay.lines,
+                    self.overlay.columns,
+                    "\n\nError opening this screenshot, the screenshot may be broken\n"
+                    "(Press 'd' twice to delete)\n\n" + traceback.format_exc(),
+                    bg=0,
+                    fg=9,
+                )
+        self.show_hint_time = 0
+        self.press_delete = False
+        if not noshowtitle:
+            self.overlay.write_rect(
+                0,
+                0,
+                self.overlay.lines,
+                self.overlay.columns,
+                f'Viewing "{fname}" [x|Left]Prev [w|Right]Next [z]Quit',
+                fg=0,
+                bg=10,
+            )
+            self.show_hint_time = 300

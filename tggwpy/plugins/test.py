@@ -6,45 +6,41 @@ from .. import mouseevent
 
 
 class Test(plugin.Plugin):
-    def __init__(self, game: ptyrun.Ptyrun) -> None:
-        super().__init__(game)
+    def __plugin_init__(self) -> None:
         self.frame = 0
         self.change = 0
         self.mousey = 0
         self.mousex = 0
         self.lastkey = b""
+        self.test = False
 
     def update(self) -> None:
         self.overlay.clear()
-        cchar = self.game.screen.data[0][2]
-        fg2 = cchar.fg
-        bg2 = cchar.bg
-        if self.mousex < self.game.columns and self.mousey < self.game.lines:
-            char = self.game.screen.data[self.mousey][self.mousex]
-            self.overlay.write(
-                37,
-                2,
-                f"{self.frame} c={self.change} k={self.lastkey!r} m=({self.mousey},{self.mousex}) {char!r}",
-                fg=fg2,
-                bg=bg2,
-            )
-        else:
-            self.overlay.write(
-                37,
-                2,
-                f"{self.frame} c={self.change} k={self.lastkey!r} m=({self.mousey},{self.mousex})",
-                fg=fg2,
-                bg=bg2,
-            )
-        self.overlay.write(
-            37,
-            64,
-            datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            fg=fg2,
-            bg=bg2,
-        )
+        if self.test:
+            scr = self.tggw.game_screen()
+            if self.mousex < scr.columns and self.mousey < scr.lines:
+                char = scr.data[self.mousey][self.mousex]
+                self.overlay.write(
+                    37,
+                    2,
+                    f"{self.frame} c={self.change} k={self.lastkey!r} m=({self.mousey},{self.mousex}) {char!r}",
+                    fg=0,
+                    bg=15,
+                )
+            else:
+                self.overlay.write(
+                    37,
+                    2,
+                    f"{self.frame} c={self.change} k={self.lastkey!r} m=({self.mousey},{self.mousex})",
+                    fg=0,
+                    bg=15,
+                )
 
     def on_key(self, key: bytes) -> bool:
+        if key == b"T":
+            self.test = not self.test
+            self.update()
+            return False
         self.lastkey = key
         self.update()
         return True
