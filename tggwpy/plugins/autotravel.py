@@ -2,11 +2,7 @@ from typing import Dict, Tuple, List
 from enum import Enum
 from dataclasses import dataclass
 
-from .. import ptyrun
 from .. import plugin
-from .. import mouseevent
-from .. import screen
-
 
 class AutoTravel(plugin.Plugin):
     def __plugin_init__(self) -> None:
@@ -95,7 +91,7 @@ class AutoTravel(plugin.Plugin):
                         bg = 5
                     elif ch0.text == "o" and ch0.fg != 8:
                         bg = 5
-                    ch1 = screen.Char(ch0.text, ch0.fg, bg)
+                    ch1 = plugin.Char(ch0.text, ch0.fg, bg)
                     self.overlay.data[y][x] = ch1
 
     def on_key(self, key: bytes) -> bool:
@@ -110,7 +106,7 @@ class AutoTravel(plugin.Plugin):
                     self.autoexplore = True
         return True
 
-    def on_mouse(self, mouse: mouseevent.MouseEvent) -> bool:
+    def on_mouse(self, mouse: plugin.MouseEvent) -> bool:
         if self.autoexplore:
             if mouse.mode in [
                 mouseevent.MouseMode.LeftClick,

@@ -1,6 +1,5 @@
 from copy import deepcopy
-from typing import Dict, List, Optional, Callable, Generator, Tuple, Union, Any
-from threading import Event
+from typing import Dict, List, Optional, Callable, Generator, Union
 from contextlib import contextmanager
 import time
 import os
@@ -60,8 +59,6 @@ class TUI:
         self.drawn_screen = screen.Screen(lines, columns)
         self.mouse_translate = mouse_translate
         self.terminal_too_small = False
-        # Create a new thread to read input to solve the input lost problem
-        # TODO should use some better way to do this
         self.plugins: List[plugin.Plugin] = []
 
     @staticmethod
@@ -193,6 +190,11 @@ class TUI:
         self, timeout: float = 0
     ) -> Optional[Union[bytes, List[mouseevent.MouseEvent]]]:
         ch = getch.getinput()
+        if ch == b"":
+            endtime = time.monotonic() + timeout
+            while ch == b"" and time.monotonic() < endtime:
+                time.sleep(0.005)
+                ch = getch.getinput()
         if ch == b"":
             return None
         if self.mouse_translate is not None:

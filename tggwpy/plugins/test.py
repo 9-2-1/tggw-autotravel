@@ -1,8 +1,4 @@
-import datetime
-
-from .. import ptyrun
 from .. import plugin
-from .. import mouseevent
 
 
 class Test(plugin.Plugin):
@@ -45,7 +41,7 @@ class Test(plugin.Plugin):
         self.update()
         return True
 
-    def on_mouse(self, mouse: mouseevent.MouseEvent) -> bool:
+    def on_mouse(self, mouse: plugin.MouseEvent) -> bool:
         self.mousey = mouse.y
         self.mousex = mouse.x
         self.update()

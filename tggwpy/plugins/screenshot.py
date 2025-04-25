@@ -37,7 +37,7 @@ class Screenshot(plugin.Plugin):
                 self.overlay.clear()
                 self.overlay.write(0, 0, f'Screenshot saved to "{fname}"', fg=0, bg=10)
                 self.show_hint_time = 300
-                with open(fname, "w") as file:
+                with open(fname, "w", encoding="utf-8") as file:
                     file.write(str(scr))
                 return False
             elif key == b"w":
@@ -113,13 +113,13 @@ class Screenshot(plugin.Plugin):
             self.show_hint_time = 300
         fname = self.replay_list[self.replay_pos]
         self.overlay.fill(0, 0, self.overlay.lines, self.overlay.columns, fillchar=" ")
-        with open(fname, "r") as file:
+        with open(fname, "r", encoding="utf-8") as file:
             try:
                 scr = plugin.Screen.parse(file.read())
                 for y in range(scr.lines):
                     for x in range(scr.columns):
                         self.overlay.data[y][x] = scr.data[y][x]
-            except:
+            except Exception:
                 self.overlay.write_rect(
                     0,
                     0,

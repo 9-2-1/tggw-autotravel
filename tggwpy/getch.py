@@ -1,5 +1,4 @@
 # Since pytermgui.getch() have different behaviour in windows/unix, I need my own getch
-from typing import Optional, IO, Any
 
 import os
 

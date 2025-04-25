@@ -1,5 +1,5 @@
 import time
-from typing import List, Literal, Type, TypeVar, Optional
+from typing import List, Type, TypeVar, Optional
 import os
 import signal
 import traceback
@@ -7,10 +7,8 @@ import traceback
 from . import ptyrun
 from . import tui
 from . import plugin
-from . import mouseevent
 from . import screen
 from . import errorlog
-from . import overlay
 from . import patch
 from . import getch
 
@@ -42,9 +40,9 @@ class TGGW:
         self.is_suspend = True
 
     def getplugin(self, cls: Type[T]) -> T:
-        for plugin in self.plugins:
-            if isinstance(plugin, cls):
-                return plugin
+        for plu in self.plugins:
+            if isinstance(plu, cls):
+                return plu
         raise ValueError("Plugin not found")
 
     def game_screen(self) -> screen.Screen:
@@ -62,16 +60,16 @@ class TGGW:
     def run(self) -> None:
         patch.patch()
         if os.name == "nt":
-            TGGW = [r"tggw\tggw-patched.exe"]
+            GAME = [r"tggw\tggw-patched.exe"]
         else:
-            TGGW = ["wine", "cmd", "/c", "tggw-wine.cmd"]
+            GAME = ["wine", "cmd", "/c", "tggw-wine.cmd"]
         # game refused to run under 52 lines even only need 38
         REAL_LINES = 52
         LINES = 38
         COLUMNS = 92
         CYCLE_TIME = 0.01
         FRAME_TIME = 0.015
-        self.game = ptyrun.Ptyrun(TGGW, REAL_LINES, COLUMNS)
+        self.game = ptyrun.Ptyrun(GAME, REAL_LINES, COLUMNS)
         self.plugins = [
             x(self)
             for x in [
@@ -127,10 +125,10 @@ class TGGW:
                         user_key = self.tui.getch(timeout=CYCLE_TIME)
                         if isinstance(user_key, list):
                             # mouseevent handler
-                            for mouseevent in user_key:
+                            for event in user_key:
                                 for plu in self.plugins:
                                     with errorlog.errorlog():
-                                        if not plu.on_mouse(mouseevent):
+                                        if not plu.on_mouse(event):
                                             break
                         elif isinstance(user_key, bytes):
                             # ignore input if terminal is too small
@@ -164,7 +162,7 @@ class TGGW:
                     break
                 else:  # self.is_exit:
                     break
-            except:
+            except Exception:
                 traceback.print_exc()
                 print("Continue? (Y/N): ", end="", flush=True)
                 ans = b""
@@ -176,6 +174,7 @@ class TGGW:
                     if ans == b"Y" or ans == b"y":
                         conti = True
                         break
+                    time.sleep(CYCLE_TIME)
                 print(ans.decode(errors="ignore"))
                 if not conti:
                     break

@@ -1,5 +1,4 @@
 from .. import plugin
-from .. import ptyrun
 
 
 class PressAnyKey(plugin.Plugin):

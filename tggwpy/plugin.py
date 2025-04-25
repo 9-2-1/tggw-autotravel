@@ -6,6 +6,7 @@ from . import overlay
 
 MouseEvent = mouseevent.MouseEvent
 Screen = screen.Screen
+Char = screen.Char
 
 
 class Plugin:

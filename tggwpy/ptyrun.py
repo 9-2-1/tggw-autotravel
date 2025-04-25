@@ -105,7 +105,6 @@ class Ptyrun:
         Apply new pty updates to screen.Screen
         Return true if there are new updates
         """
-        modified_list: List[Tuple[int, int]] = []
         self.pty_screen.dirty.clear()
         if self.pty_data.empty():
             return False

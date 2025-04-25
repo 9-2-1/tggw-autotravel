@@ -5,7 +5,7 @@ import traceback
 
 
 def log(*args: List[Any]) -> None:
-    with open("error.log", "a") as err_file:
+    with open("error.log", "a", encoding="utf-8") as err_file:
         print(f"{datetime.datetime.now()}", file=err_file)
         print(*args, file=err_file)
 
@@ -14,7 +14,7 @@ def log(*args: List[Any]) -> None:
 def errorlog() -> Generator[None, None, None]:
     try:
         yield
-    except:
-        with open("error.log", "a") as err_file:
+    except Exception:
+        with open("error.log", "a", encoding="utf-8") as err_file:
             print(f"{datetime.datetime.now()}", file=err_file)
             traceback.print_exc(file=err_file)
