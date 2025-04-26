@@ -66,8 +66,8 @@ class Screenshot(plugin.Plugin):
             elif key in [b"w", b"j", b"l", b"\x1b[B", b"\x1b[C"]:
                 # next
                 self.replay_pos += 1
-                if self.replay_pos == len(self.replay_list):
-                    self.replay_pos -= 1
+                if self.replay_pos >= len(self.replay_list):
+                    self.replay_pos == len(self.replay_list) - 1
                     self.replay(noshowtitle=True)
                     self.overlay.write(
                         37, 0, "This is the oldest screenshot.", fg=0, bg=10
@@ -79,8 +79,8 @@ class Screenshot(plugin.Plugin):
                 if self.press_delete:
                     fname = self.replay_list.pop(self.replay_pos)
                     os.unlink(fname)
-                    if self.replay_pos == len(self.replay_list):
-                        self.replay_pos -= 1
+                    if self.replay_pos >= len(self.replay_list):
+                        self.replay_pos == len(self.replay_list) - 1
                     self.replay()
                     self.press_delete = False
                 else:
@@ -109,7 +109,7 @@ class Screenshot(plugin.Plugin):
         if len(self.replay_list) == 0:
             self.replay_mode = False
             self.overlay.clear()
-            self.overlay.write(37, 0, "No screenshot found", fg=0, bg=11)
+            self.overlay.write(37, 0, "No screenshots found", fg=0, bg=11)
             self.show_hint_time = 60
         fname = self.replay_list[self.replay_pos]
         self.overlay.fill(0, 0, self.overlay.lines, self.overlay.columns, fillchar=" ")
