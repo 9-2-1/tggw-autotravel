@@ -20,14 +20,14 @@ class Screenshot(plugin.Plugin):
             if key in [b"q", b"Q"]:
                 # capture screenshot
                 if key == b"q":
-                    scr = self.tggw.tui_screen()
-                else:
-                    # capture real screen
                     scr = self.tggw.game_screen()
+                else:
+                    # capture real screen (with plugin overlay)
+                    scr = self.tggw.tui_screen()
                 tstr = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 fname = f"tggw_{tstr}"
                 if key == b"Q":
-                    fname = fname + "_original"
+                    fname = fname + "_plugin"
                 fname0 = fname
                 counter = 1
                 while os.path.exists(f"{fname}.txt"):
@@ -35,8 +35,8 @@ class Screenshot(plugin.Plugin):
                     fname = f"{fname0}_{counter}"
                 fname = f"{fname}.txt"
                 self.overlay.clear()
-                self.overlay.write(0, 0, f'Screenshot saved to "{fname}"', fg=0, bg=10)
-                self.show_hint_time = 300
+                self.overlay.write(37, 0, f'Screenshot saved to "{fname}"', fg=0, bg=10)
+                self.show_hint_time = 60
                 with open(fname, "w", encoding="utf-8") as file:
                     file.write(str(scr))
                 return False
@@ -51,16 +51,16 @@ class Screenshot(plugin.Plugin):
                 return False
         else:
             # replay mode
-            if key in [b"x", b"k", b"h", b"\x1b[A", b"\x1b[D"]:
+            if key in [b"q", b"k", b"h", b"\x1b[A", b"\x1b[D"]:
                 # prev
                 self.replay_pos -= 1
                 if self.replay_pos == -1:
                     self.replay_pos = 0
                     self.replay(noshowtitle=True)
                     self.overlay.write(
-                        0, 0, "This is the newest screenshot.", fg=0, bg=10
+                        37, 0, "This is the newest screenshot.", fg=0, bg=10
                     )
-                    self.show_hint_time = 300
+                    self.show_hint_time = 60
                 else:
                     self.replay()
             elif key in [b"w", b"j", b"l", b"\x1b[B", b"\x1b[C"]:
@@ -70,9 +70,9 @@ class Screenshot(plugin.Plugin):
                     self.replay_pos -= 1
                     self.replay(noshowtitle=True)
                     self.overlay.write(
-                        0, 0, "This is the oldest screenshot.", fg=0, bg=10
+                        37, 0, "This is the oldest screenshot.", fg=0, bg=10
                     )
-                    self.show_hint_time = 300
+                    self.show_hint_time = 60
                 else:
                     self.replay()
             elif key in [b"d"]:
@@ -86,8 +86,8 @@ class Screenshot(plugin.Plugin):
                 else:
                     self.replay(noshowtitle=True)
                     self.press_delete = True
-                    self.overlay.write(0, 0, "Press 'd' again to delete", fg=0, bg=11)
-                    self.show_hint_time = 300
+                    self.overlay.write(37, 0, "Press 'd' again to delete", fg=0, bg=11)
+                    self.show_hint_time = 60
             elif key in [b"z", b"\x1b"]:
                 self.overlay.clear()
                 self.replay_mode = False
@@ -109,8 +109,8 @@ class Screenshot(plugin.Plugin):
         if len(self.replay_list) == 0:
             self.replay_mode = False
             self.overlay.clear()
-            self.overlay.write(0, 0, "No screenshot found", fg=0, bg=11)
-            self.show_hint_time = 300
+            self.overlay.write(37, 0, "No screenshot found", fg=0, bg=11)
+            self.show_hint_time = 60
         fname = self.replay_list[self.replay_pos]
         self.overlay.fill(0, 0, self.overlay.lines, self.overlay.columns, fillchar=" ")
         with open(fname, "r", encoding="utf-8") as file:
@@ -119,9 +119,10 @@ class Screenshot(plugin.Plugin):
                 for y in range(scr.lines):
                     for x in range(scr.columns):
                         self.overlay.data[y][x] = scr.data[y][x]
+                        self.overlay.cursor = scr.cursor
             except Exception:
                 self.overlay.write_rect(
-                    0,
+                    37,
                     0,
                     self.overlay.lines,
                     self.overlay.columns,
@@ -134,12 +135,12 @@ class Screenshot(plugin.Plugin):
         self.press_delete = False
         if not noshowtitle:
             self.overlay.write_rect(
-                0,
+                37,
                 0,
                 self.overlay.lines,
                 self.overlay.columns,
-                f'Viewing "{fname}" [x|Left]Prev [w|Right]Next [z]Quit',
+                f'Viewing "{fname}" [q|Left]Prev [w|Right]Next [d]Delete [z]Quit',
                 fg=0,
                 bg=10,
             )
-            self.show_hint_time = 300
+            self.show_hint_time = 60

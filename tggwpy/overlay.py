@@ -18,6 +18,7 @@ class Overlay:
         for y in range(y0, y0 + h if h != -1 else self.lines):
             for x in range(x0, x0 + w if w != -1 else self.columns):
                 self.data[y][x] = None
+        self.cursor = None
 
     def fill(
         self,

@@ -80,6 +80,8 @@ class Screen:
         ret += "\n".join(
             "".join("0123456789ABCDEF"[char.bg] for char in line) for line in scr
         )
+        ret += "\ncursor:\n"
+        ret += f"{self.cursor.y}, {self.cursor.x}, {self.cursor.hidden}"
         return ret
 
     @staticmethod
@@ -106,4 +108,14 @@ class Screen:
                 ret.data[y][x] = Char(
                     text=char_text, fg=int(char_fg, 16), bg=int(char_bg, 16)
                 )
+        if 3 + scr_lines * 3 < len(lines) and lines[3 + scr_lines * 3] == "cursor:":
+            # have cursor data
+            cursor_line = lines[4 + scr_lines * 3]
+            cursor_y, cursor_x, cursor_hidden = cursor_line.split(",")
+            ret.cursor = Cursor(
+                y=int(cursor_y), x=int(cursor_x), hidden=(cursor_hidden == "True")
+            )
+        else:
+            # hidden cursor default
+            ret.cursor = Cursor(0, 0, True)
         return ret

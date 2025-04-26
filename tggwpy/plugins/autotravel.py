@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from .. import plugin
 
+
 class AutoTravel(plugin.Plugin):
     def __plugin_init__(self) -> None:
         self.autoexplore = False

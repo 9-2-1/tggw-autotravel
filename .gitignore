@@ -1,19 +1,27 @@
+# vim
 .*.un~
 .*.sw[nmop]
 
+# pyinstaller
 build
 dist
+main.spec
 
+# the original game
 tggw
 
+# savedata
 slot*
 TGGW.ini
 
+# python
 __pycache__
 
+# windows
 *.lnk
 
-main.spec
+# plugin error log
 error.log
 
-dump_*.txt
+# screenshot
+tggw_*.txt
