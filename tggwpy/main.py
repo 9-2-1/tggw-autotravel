@@ -39,6 +39,10 @@ class TGGW:
     def suspend(self) -> None:
         self.is_suspend = True
 
+    def full_redraw(self) -> None:
+        assert self.tui is not None
+        self.tui.need_full_redraw = True
+
     def getplugin(self, cls: Type[T]) -> T:
         for plu in self.plugins:
             if isinstance(plu, cls):

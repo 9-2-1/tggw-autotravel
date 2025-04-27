@@ -67,7 +67,7 @@ class Screenshot(plugin.Plugin):
                 # next
                 self.replay_pos += 1
                 if self.replay_pos >= len(self.replay_list):
-                    self.replay_pos == len(self.replay_list) - 1
+                    self.replay_pos = len(self.replay_list) - 1
                     self.replay(noshowtitle=True)
                     self.overlay.write(
                         37, 0, "This is the oldest screenshot.", fg=0, bg=10

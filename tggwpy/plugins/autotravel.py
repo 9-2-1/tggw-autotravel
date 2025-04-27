@@ -110,8 +110,8 @@ class AutoTravel(plugin.Plugin):
     def on_mouse(self, mouse: plugin.MouseEvent) -> bool:
         if self.autoexplore:
             if mouse.mode in [
-                mouseevent.MouseMode.LeftClick,
-                mouseevent.MouseMode.RightClick,
+                plugin.MouseMode.LeftClick,
+                plugin.MouseMode.RightClick,
             ]:
                 self.autoexplore = False
         return True

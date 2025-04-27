@@ -53,6 +53,7 @@ class TUI:
     ) -> None:
         self.lines = lines
         self.columns = columns
+        self.need_full_redraw = True
         self.last_term_lines = -1
         self.last_term_columns = -1
         self.screen = screen.Screen(lines, columns)
@@ -93,15 +94,17 @@ class TUI:
     def redraw(self) -> None:
         term_columns, term_lines = os.get_terminal_size()
         if self.last_term_lines != term_lines or self.last_term_columns != term_columns:
+            self.need_full_redraw = True
+        if self.need_full_redraw:
             self.full_redraw()
             return
         if self.terminal_too_small:
             return
         # directly construct escape sequence for speed
-        cx = -10
-        cy = -10
-        fg = 7
-        bg = 0
+        cx = -1
+        cy = -1
+        fg = -1
+        bg = -1
         # hide cursor
         refresh_str = "\x1b[?25l"
         for y in range(self.lines):
@@ -143,6 +146,7 @@ class TUI:
         term_columns, term_lines = os.get_terminal_size()
         self.last_term_columns = term_columns
         self.last_term_lines = term_lines
+        self.need_full_redraw = False
         self.terminal_too_small = False
         if term_lines < self.lines or term_columns < self.columns:
             self.terminal_too_small = True

@@ -113,7 +113,9 @@ class Screen:
             cursor_line = lines[4 + scr_lines * 3]
             cursor_y, cursor_x, cursor_hidden = cursor_line.split(",")
             ret.cursor = Cursor(
-                y=int(cursor_y), x=int(cursor_x), hidden=(cursor_hidden == "True")
+                y=int(cursor_y),
+                x=int(cursor_x),
+                hidden=(cursor_hidden.strip() == "True"),
             )
         else:
             # hidden cursor default

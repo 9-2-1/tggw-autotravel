@@ -10,9 +10,6 @@ KEYMAP = {
     b"\x1b[1;2B": b"J",  # Shift+Down
     b"\x1b[1;2C": b"L",  # Shift+Right
     b"\x1b[1;2D": b"H",  # Shift+Left
-    b"\r": b" ",  # Enter
-    b"\n": b" ",  # Enter
-    b"\b": b"z",  # Backspace
     b"\x1b[5~": b"[",  # PgUp, patched
     b"\x1b[6~": b"]",  # PgDn, patched
 }

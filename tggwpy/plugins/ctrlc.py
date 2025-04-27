@@ -24,13 +24,13 @@ class CtrlC(plugin.Plugin):
                 self.overlay.write(
                     0,
                     0,
-                    "Press Ctrl-C again to force quit (progress will lost). ",
+                    "Press Ctrl-C again to force quit (progress will lost).",
                     fg=0,
                     bg=11,
                 )
                 self.ctrlc = True
                 self.ctrlz = False
-                self.show_hint_time = 300
+                self.show_hint_time = 60
             return False
         elif os.name != "nt" and key == b"\x1a":
             # ctrl+z twice
@@ -45,13 +45,26 @@ class CtrlC(plugin.Plugin):
                 self.overlay.write(
                     0,
                     0,
-                    "Press Ctrl-Z again to suspend. ",
+                    "Press Ctrl-Z again to suspend.",
                     fg=0,
                     bg=11,
                 )
                 self.ctrlc = False
                 self.ctrlz = True
-                self.show_hint_time = 300
+                self.show_hint_time = 60
+            return False
+        elif key == b"\x0c":
+            # ctrl+l to force full_redraw
+            self.overlay.clear()
+            self.overlay.write(
+                0,
+                0,
+                "Redraw",
+                fg=0,
+                bg=10,
+            )
+            self.show_hint_time = 60
+            self.tggw.full_redraw()
             return False
         else:
             self.overlay.clear()

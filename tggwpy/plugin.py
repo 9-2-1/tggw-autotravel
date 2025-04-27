@@ -5,6 +5,7 @@ from . import screen
 from . import overlay
 
 MouseEvent = mouseevent.MouseEvent
+MouseMode = mouseevent.MouseMode
 Screen = screen.Screen
 Char = screen.Char
 Cursor = screen.Cursor
