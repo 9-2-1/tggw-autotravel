@@ -7,7 +7,7 @@ class Test(plugin.Plugin):
         self.change = 0
         self.mousey = 0
         self.mousex = 0
-        self.lastkey = b""
+        self.lastkey = ""
         self.test = False
 
     def update(self) -> None:
@@ -32,8 +32,8 @@ class Test(plugin.Plugin):
                     bg=15,
                 )
 
-    def on_key(self, key: bytes) -> bool:
-        if key == b"T":
+    def on_key(self, key: str) -> bool:
+        if key == "T":
             self.test = not self.test
             self.update()
             return False

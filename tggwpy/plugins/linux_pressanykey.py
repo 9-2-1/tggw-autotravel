@@ -12,5 +12,5 @@ class PressAnyKey(plugin.Plugin):
             if cur.x == 0 and cur.y > 0 and not cur.hidden:
                 checktext = scr.readtext(cur.y - 1, 0).strip()
                 if checktext == "Press any key to start.":
-                    self.tggw.sendtext(b" ")
+                    self.tggw.sendtext(" ")
                     self.pressed = True

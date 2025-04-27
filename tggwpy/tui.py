@@ -3,16 +3,16 @@ from typing import Dict, List, Optional, Callable, Generator, Union
 from contextlib import contextmanager
 import time
 import os
+import sys
 
-if os.name != "nt":
+if sys.platform != "win32":
     import termios
     import tty
-    import sys
 
 import pytermgui as ptg
 import pytermgui.context_managers as ptgctx
 
-if os.name == "nt":
+if sys.platform == "win32":
     import colorama
 
 from . import mouseevent
@@ -61,6 +61,7 @@ class TUI:
         self.mouse_translate = mouse_translate
         self.terminal_too_small = False
         self.plugins: List[plugin.Plugin] = []
+        self.getch_unicode = getch.GetchUnicode()
 
     @staticmethod
     @contextmanager
@@ -74,7 +75,7 @@ class TUI:
             with ptgctx.alt_buffer():
                 with ptgctx.mouse_handler(["all"]) as mouse_translate:
                     gameui = TUI(lines, columns, mouse_translate=mouse_translate)
-                    if os.name != "nt":
+                    if sys.platform != "win32":
                         # enable raw
                         descriptor = sys.stdin.fileno()
                         old_settings = termios.tcgetattr(descriptor)
@@ -82,7 +83,7 @@ class TUI:
                     try:
                         yield gameui
                     finally:
-                        if os.name != "nt":
+                        if sys.platform != "win32":
                             termios.tcsetattr(
                                 descriptor, termios.TCSADRAIN, old_settings
                             )
@@ -192,17 +193,17 @@ class TUI:
 
     def getch(
         self, timeout: float = 0
-    ) -> Optional[Union[bytes, List[mouseevent.MouseEvent]]]:
-        ch = getch.getinput()
-        if ch == b"":
+    ) -> Optional[Union[str, List[mouseevent.MouseEvent]]]:
+        ch = self.getch_unicode.getinput()
+        if ch == "":
             endtime = time.monotonic() + timeout
-            while ch == b"" and time.monotonic() < endtime:
+            while ch == "" and time.monotonic() < endtime:
                 time.sleep(0.005)
-                ch = getch.getinput()
-        if ch == b"":
+                ch = self.getch_unicode.getinput()
+        if ch == "":
             return None
         if self.mouse_translate is not None:
-            events = self.mouse_translate(ch.decode(errors="ignore"))
+            events = self.mouse_translate(ch)
             if events is not None and len(events) != 0:
                 mlist: List[mouseevent.MouseEvent] = []
                 for event in events:

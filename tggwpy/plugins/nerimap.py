@@ -1,4 +1,4 @@
-from typing import Union, Literal, List, Optional
+from typing import Union, Literal, List, Optional, Dict, Set
 from dataclasses import dataclass
 
 from .. import screen
@@ -51,7 +51,7 @@ class Item:
 
 @dataclass
 class DispCell:
-    symbol: Symbol
+    symbol: Optional[Symbol]
     feature: Optional[Feature]
     monster: Optional[Monster]
     item: Optional[Item]
@@ -66,7 +66,8 @@ class NeriMap:
         self.columns = columns
         self.title = ""
         self.map = [
-            [DispCell(None, None, None) for x in range(lines)] for y in range(columns)
+            [DispCell(None, None, None, None) for x in range(lines)]
+            for y in range(columns)
         ]
 
     def update_map(self, scr: screen.Screen) -> None:

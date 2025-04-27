@@ -21,7 +21,7 @@ class Plugin:
     def __plugin_init__(self) -> None:
         pass
 
-    def on_key(self, key: bytes) -> bool:
+    def on_key(self, key: str) -> bool:
         return True
 
     def on_mouse(self, mouse: MouseEvent) -> bool:

@@ -95,15 +95,15 @@ class AutoTravel(plugin.Plugin):
                     ch1 = plugin.Char(ch0.text, ch0.fg, bg)
                     self.overlay.data[y][x] = ch1
 
-    def on_key(self, key: bytes) -> bool:
-        if key == b"E":
+    def on_key(self, key: str) -> bool:
+        if key == "E":
             self.debug = not self.debug
         else:
             if self.autoexplore:
                 self.autoexplore = False
                 self.explore()
             else:
-                if key == b"e":
+                if key == "e":
                     self.autoexplore = True
         return True
 

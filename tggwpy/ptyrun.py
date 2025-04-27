@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Dict, List, Optional, Tuple
 import os
 import time
 from threading import Thread, Event
@@ -66,7 +66,14 @@ class Ptyrun:
     The original game runner
     """
 
-    def __init__(self, command: List[str], lines: int, columns: int) -> None:
+    def __init__(
+        self,
+        command: List[str],
+        lines: int,
+        columns: int,
+        cwd: Optional[str] = None,
+        env: Optional[Dict[str, str]] = None,
+    ) -> None:
         self.lines = lines
         self.columns = columns
 
@@ -74,7 +81,7 @@ class Ptyrun:
         self.stop = Event()
 
         if os.name == "nt":
-            self.pty = winpty.PtyProcess.spawn(command)
+            self.pty = winpty.PtyProcess.spawn(command, cwd=cwd, env=env)
             self.pty.setwinsize(lines, columns)
         else:
             self.pty = ptyprocess.PtyProcessUnicode.spawn(
@@ -98,7 +105,7 @@ class Ptyrun:
                 else:
                     time.sleep(0.01)
         except EOFError:
-            pass
+            return
 
     def update_screen(self) -> bool:
         """
@@ -124,8 +131,9 @@ class Ptyrun:
         self.screen.cursor = screen.Cursor(cur.y, cur.x, cur.hidden)
         return True
 
-    def sendtext(self, text: bytes) -> None:
-        self.pty.write(text.decode(errors="ignore"))
+    def sendtext(self, text: str) -> None:
+        if self.is_running():
+            self.pty.write(text)
 
     def is_running(self) -> bool:
         # Make mypy happy
@@ -135,4 +143,5 @@ class Ptyrun:
         self.pty.terminate()
 
     def close(self) -> None:
+        self.stop.set()
         self.pty.close()

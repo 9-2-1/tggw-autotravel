@@ -1,6 +1,7 @@
 import time
 from typing import List, Type, TypeVar, Optional
 import os
+import sys
 import signal
 import traceback
 
@@ -57,13 +58,13 @@ class TGGW:
         assert self.tui is not None
         return self.tui.screen
 
-    def sendtext(self, text: bytes) -> None:
+    def sendtext(self, text: str) -> None:
         assert self.game is not None
         self.game.sendtext(text)
 
     def run(self) -> None:
         patch.patch()
-        if os.name == "nt":
+        if sys.platform == "win32":
             GAME = [r"tggw\tggw-patched.exe"]
         else:
             GAME = ["wine", "cmd", "/c", "tggw-wine.cmd"]
@@ -73,7 +74,7 @@ class TGGW:
         COLUMNS = 92
         CYCLE_TIME = 0.01
         FRAME_TIME = 0.015
-        self.game = ptyrun.Ptyrun(GAME, REAL_LINES, COLUMNS)
+        self.game = ptyrun.Ptyrun(GAME, REAL_LINES, COLUMNS, cwd="tggw")
         self.plugins = [
             x(self)
             for x in [
@@ -134,10 +135,10 @@ class TGGW:
                                     with errorlog.errorlog():
                                         if not plu.on_mouse(event):
                                             break
-                        elif isinstance(user_key, bytes):
+                        elif isinstance(user_key, str):
                             # ignore input if terminal is too small
                             if self.tui.terminal_too_small:
-                                if user_key == b"\x03":
+                                if user_key == "\x03":
                                     self.interrupt()
                             else:
                                 # key input handler
@@ -157,7 +158,8 @@ class TGGW:
                             break
 
                 if self.is_suspend:
-                    os.kill(0, signal.SIGTSTP)
+                    if sys.platform != "win32":
+                        os.kill(0, signal.SIGTSTP)
                     self.is_suspend = False
                     continue
                 elif self.is_interrupt:
@@ -169,16 +171,17 @@ class TGGW:
             except Exception:
                 traceback.print_exc()
                 print("Continue? (Y/N): ", end="", flush=True)
-                ans = b""
+                ans = ""
+                getch_unicode = getch.GetchUnicode()
                 while True:
-                    ans = getch.getinput()[:1]
-                    if ans == b"N" or ans == b"n":
+                    ans = getch_unicode.getinput()[:1].lower()
+                    if ans == "N":
                         conti = False
                         break
-                    if ans == b"Y" or ans == b"y":
+                    if ans == "Y":
                         conti = True
                         break
                     time.sleep(CYCLE_TIME)
-                print(ans.decode(errors="ignore"))
+                print(ans)
                 if not conti:
                     break

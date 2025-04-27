@@ -15,18 +15,18 @@ class Screenshot(plugin.Plugin):
         self.replay_pos = 0
         self.press_delete = False
 
-    def on_key(self, key: bytes) -> bool:
+    def on_key(self, key: str) -> bool:
         if not self.replay_mode:
-            if key in [b"q", b"Q"]:
+            if key in ["q", "Q"]:
                 # capture screenshot
-                if key == b"q":
+                if key == "q":
                     scr = self.tggw.game_screen()
                 else:
                     # capture real screen (with plugin overlay)
                     scr = self.tggw.tui_screen()
                 tstr = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 fname = f"tggw_{tstr}"
-                if key == b"Q":
+                if key == "Q":
                     fname = fname + "_plugin"
                 fname0 = fname
                 counter = 1
@@ -40,7 +40,7 @@ class Screenshot(plugin.Plugin):
                 with open(fname, "w", encoding="utf-8") as file:
                     file.write(str(scr))
                 return False
-            elif key == b"w":
+            elif key == "w":
                 # enter replay mode
                 self.replay_mode = True
                 self.replay_list = glob.glob("tggw_*.txt")
@@ -51,7 +51,7 @@ class Screenshot(plugin.Plugin):
                 return False
         else:
             # replay mode
-            if key in [b"q", b"k", b"h", b"\x1b[A", b"\x1b[D"]:
+            if key in ["q", "k", "h", "\x1b[A", "\x1b[D"]:
                 # prev
                 self.replay_pos -= 1
                 if self.replay_pos == -1:
@@ -63,7 +63,7 @@ class Screenshot(plugin.Plugin):
                     self.show_hint_time = 60
                 else:
                     self.replay()
-            elif key in [b"w", b"j", b"l", b"\x1b[B", b"\x1b[C"]:
+            elif key in ["w", "j", "l", "\x1b[B", "\x1b[C"]:
                 # next
                 self.replay_pos += 1
                 if self.replay_pos >= len(self.replay_list):
@@ -75,7 +75,7 @@ class Screenshot(plugin.Plugin):
                     self.show_hint_time = 60
                 else:
                     self.replay()
-            elif key in [b"d"]:
+            elif key in ["d"]:
                 if self.press_delete:
                     fname = self.replay_list.pop(self.replay_pos)
                     os.unlink(fname)
@@ -88,10 +88,10 @@ class Screenshot(plugin.Plugin):
                     self.press_delete = True
                     self.overlay.write(37, 0, "Press 'd' again to delete", fg=0, bg=11)
                     self.show_hint_time = 60
-            elif key in [b"z", b"\x1b"]:
+            elif key in ["z", "\x1b"]:
                 self.overlay.clear()
                 self.replay_mode = False
-            if key not in [b"d"]:
+            if key not in ["d"]:
                 self.press_delete = False
             return False
         return True

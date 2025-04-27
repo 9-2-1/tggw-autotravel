@@ -2,21 +2,21 @@ from .. import plugin
 
 # Translate arrow keys to HJKL for linux
 KEYMAP = {
-    b"\x1b[A": b"k",  # Up
-    b"\x1b[B": b"j",  # Down
-    b"\x1b[C": b"l",  # Right
-    b"\x1b[D": b"h",  # Left
-    b"\x1b[1;2A": b"K",  # Shift+Up
-    b"\x1b[1;2B": b"J",  # Shift+Down
-    b"\x1b[1;2C": b"L",  # Shift+Right
-    b"\x1b[1;2D": b"H",  # Shift+Left
-    b"\x1b[5~": b"[",  # PgUp, patched
-    b"\x1b[6~": b"]",  # PgDn, patched
+    "\x1b[A": "k",  # Up
+    "\x1b[": "j",  # Down
+    "\x1b[C": "l",  # Right
+    "\x1b[D": "h",  # Left
+    "\x1b[1;2A": "K",  # Shift+Up
+    "\x1b[1;2": "J",  # Shift+Down
+    "\x1b[1;2C": "L",  # Shift+Right
+    "\x1b[1;2D": "H",  # Shift+Left
+    "\x1b[5~": "[",  # PgUp, patched
+    "\x1b[6~": "]",  # PgDn, patched
 }
 
 
 class KeyMap(plugin.Plugin):
-    def on_key(self, key: bytes) -> bool:
+    def on_key(self, key: str) -> bool:
         if key in KEYMAP:
             self.tggw.sendtext(KEYMAP[key])
             return False

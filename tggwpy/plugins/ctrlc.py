@@ -1,4 +1,4 @@
-import os
+import sys
 
 from .. import plugin
 
@@ -9,8 +9,8 @@ class CtrlC(plugin.Plugin):
         self.ctrlz = False
         self.show_hint_time = 0
 
-    def on_key(self, key: bytes) -> bool:
-        if key == b"\x03":
+    def on_key(self, key: str) -> bool:
+        if key == "\x03":
             # ctrl+c twice
             self.overlay.clear()
             if self.ctrlc:
@@ -32,7 +32,7 @@ class CtrlC(plugin.Plugin):
                 self.ctrlz = False
                 self.show_hint_time = 60
             return False
-        elif os.name != "nt" and key == b"\x1a":
+        elif sys.platform != "win32" and key == "\x1a":
             # ctrl+z twice
             if self.ctrlz:
                 self.overlay.clear()
@@ -53,7 +53,7 @@ class CtrlC(plugin.Plugin):
                 self.ctrlz = True
                 self.show_hint_time = 60
             return False
-        elif key == b"\x0c":
+        elif key == "\x0c":
             # ctrl+l to force full_redraw
             self.overlay.clear()
             self.overlay.write(
