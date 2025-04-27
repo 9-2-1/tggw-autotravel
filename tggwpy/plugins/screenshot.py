@@ -25,25 +25,27 @@ class Screenshot(plugin.Plugin):
                     # capture real screen (with plugin overlay)
                     scr = self.tggw.tui_screen()
                 tstr = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                # save destination
                 fname = f"tggw_{tstr}"
                 if key == "Q":
                     fname = fname + "_plugin"
+                os.makedirs("screenshot", exist_ok=True)
                 fname0 = fname
                 counter = 1
-                while os.path.exists(f"{fname}.txt"):
+                while os.path.exists(f"screenshot\\{fname}.txt"):
                     counter += 1
                     fname = f"{fname0}_{counter}"
-                fname = f"{fname}.txt"
-                self.overlay.clear()
-                self.overlay.write(37, 0, f'Screenshot saved to "{fname}"', fg=0, bg=10)
-                self.show_hint_time = 60
+                fname = f"screenshot\\{fname}.txt"
                 with open(fname, "w", encoding="utf-8") as file:
                     file.write(str(scr))
+                self.overlay.clear()
+                self.overlay.write(37, 0, f'Screenshot saved to "screenshot\\{fname}"', fg=0, bg=10)
+                self.show_hint_time = 60
                 return False
             elif key == "w":
                 # enter replay mode
                 self.replay_mode = True
-                self.replay_list = glob.glob("tggw_*.txt")
+                self.replay_list = glob.glob("screenshot\\tggw_*.txt")
                 # reverse sort
                 self.replay_list.sort(reverse=True)
                 self.replay_pos = 0
@@ -80,7 +82,7 @@ class Screenshot(plugin.Plugin):
                     fname = self.replay_list.pop(self.replay_pos)
                     os.unlink(fname)
                     if self.replay_pos >= len(self.replay_list):
-                        self.replay_pos == len(self.replay_list) - 1
+                        self.replay_pos = len(self.replay_list) - 1
                     self.replay()
                     self.press_delete = False
                 else:
@@ -139,7 +141,7 @@ class Screenshot(plugin.Plugin):
                 0,
                 self.overlay.lines,
                 self.overlay.columns,
-                f'Viewing "{fname}" [q|Left]Prev [w|Right]Next [d]Delete [z]Quit',
+                f'View "{fname}" [q|Left]Prev [w|Right]Next [d]Delete [z]Quit',
                 fg=0,
                 bg=10,
             )

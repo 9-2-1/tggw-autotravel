@@ -13,6 +13,8 @@ tggw
 # savedata
 slot*
 TGGW.ini
+# screenshot
+screenshot
 
 # python
 __pycache__
@@ -23,5 +25,3 @@ __pycache__
 # plugin error log
 error.log
 
-# screenshot
-tggw_*.txt
