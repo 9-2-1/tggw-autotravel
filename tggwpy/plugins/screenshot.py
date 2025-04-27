@@ -39,7 +39,9 @@ class Screenshot(plugin.Plugin):
                 with open(fname, "w", encoding="utf-8") as file:
                     file.write(str(scr))
                 self.overlay.clear()
-                self.overlay.write(37, 0, f'Screenshot saved to "screenshot\\{fname}"', fg=0, bg=10)
+                self.overlay.write(
+                    37, 0, f'Screenshot saved to "screenshot\\{fname}"', fg=0, bg=10
+                )
                 self.show_hint_time = 60
                 return False
             elif key == "w":

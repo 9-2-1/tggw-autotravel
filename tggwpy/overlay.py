@@ -41,6 +41,8 @@ class Overlay:
         for c in text:
             self.data[y][x] = screen.Char(c, fg, bg)
             x += 1
+            if x > self.columns:
+                return
 
     def write_rect(
         self, y: int, x: int, h: int, w: int, text: str, *, fg: int = 7, bg: int = 0
