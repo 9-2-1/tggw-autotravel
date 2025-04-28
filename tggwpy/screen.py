@@ -1,4 +1,5 @@
 from typing import List, Tuple, Optional
+from enum import IntEnum
 
 from dataclasses import dataclass
 
@@ -17,6 +18,25 @@ class Cursor:
     hidden: bool = False
 
 
+class Color(IntEnum):
+    BLACK = 0
+    RED = 1
+    GREEN = 2
+    YELLOW = 3
+    BLUE = 4
+    MAGENTA = 5
+    CYAN = 6
+    WHITE = 7
+    BRIGHT_BLACK = 8
+    BRIGHT_RED = 9
+    BRIGHT_GREEN = 10
+    BRIGHT_YELLOW = 11
+    BRIGHT_BLUE = 12
+    BRIGHT_MAGENTA = 13
+    BRIGHT_CYAN = 14
+    BRIGHT_WHITE = 15
+
+
 class Screen:
     def __init__(self, lines: int, columns: int) -> None:
         self.lines = lines
@@ -28,43 +48,58 @@ class Screen:
         return self.findtextrange(0, 0, self.lines, self.columns, text)
 
     def findtextrange(
-        self, y: int, x: int, h: int, w: int, text: str, *, fg: int = -1, bg: int = -1
+        self,
+        y: int,
+        x: int,
+        h: int,
+        w: int,
+        text: str,
+        *,
+        fg: Optional[int] = None,
+        bg: Optional[int] = None,
     ) -> List[Tuple[int, int]]:
-        y0 = y
-        x0 = x
         ret: List[Tuple[int, int]] = []
-        for y in range(y0, y0 + h):
-            for x in range(x0, x0 + w - (len(text) - 1)):
+        for yi in range(y, y + h):
+            for xi in range(x, x + w - (len(text) - 1)):
                 found = True
                 for i in range(len(text)):
-                    char = self.data[y][x + i]
+                    char = self.data[yi][xi + i]
                     if char.text != text[i]:
                         found = False
                         break
-                    if fg != -1 and char.fg != fg:
+                    if fg is not None and char.fg != fg:
                         found = False
                         break
-                    if bg != -1 and char.bg != bg:
+                    if bg is not None and char.bg != bg:
                         found = False
                         break
                 if found:
-                    ret.append((y, x))
+                    ret.append((yi, xi))
         return ret
 
     def readtext(
-        self, y: int, x: int, *, end: Optional[str] = None, size: Optional[int] = None
+        self,
+        y: int,
+        x: int,
+        *,
+        fg: Optional[int] = None,
+        bg: Optional[int] = None,
+        end: Optional[str] = None,
+        size: Optional[int] = None,
     ) -> str:
         ret = ""
-        x0 = x
         if size is not None:
             x1 = min(x + size, self.columns)
         else:
             x1 = self.columns
-        for x in range(x0, x1):
-            char = self.data[y][x]
-            if end is not None:
-                if char.text == end:
-                    break
+        for xi in range(x, x1):
+            char = self.data[y][xi]
+            if end is not None and char.text == end:
+                break
+            if fg is not None and char.fg != fg:
+                break
+            if bg is not None and char.bg != bg:
+                break
             ret += char.text
         return ret
 

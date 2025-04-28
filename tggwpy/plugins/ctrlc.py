@@ -25,14 +25,14 @@ class CtrlC(plugin.Plugin):
                     0,
                     0,
                     "Press Ctrl-C again to force quit (progress will lost).",
-                    fg=0,
-                    bg=11,
+                    fg=plugin.Color.BLACK,
+                    bg=plugin.Color.BRIGHT_YELLOW,
                 )
                 self.ctrlc = True
                 self.ctrlz = False
                 self.show_hint_time = 60
             return False
-        elif sys.platform != "win32" and key == "\x1a":
+        if sys.platform != "win32" and key == "\x1a":
             # ctrl+z twice
             if self.ctrlz:
                 self.overlay.clear()
@@ -46,32 +46,32 @@ class CtrlC(plugin.Plugin):
                     0,
                     0,
                     "Press Ctrl-Z again to suspend.",
-                    fg=0,
-                    bg=11,
+                    fg=plugin.Color.BLACK,
+                    bg=plugin.Color.BRIGHT_YELLOW,
                 )
                 self.ctrlc = False
                 self.ctrlz = True
                 self.show_hint_time = 60
             return False
-        elif key == "\x0c":
+        if key == "\x0c":
             # ctrl+l to force full_redraw
             self.overlay.clear()
             self.overlay.write(
                 0,
                 0,
-                "Redraw",
-                fg=0,
-                bg=10,
+                "Screen is redrawed",
+                fg=plugin.Color.BLACK,
+                bg=plugin.Color.BRIGHT_BLUE,
             )
             self.show_hint_time = 60
             self.tggw.full_redraw()
             return False
-        else:
-            self.overlay.clear()
-            self.ctrlc = False
-            self.ctrlz = False
-            self.show_hint_time = 0
-            return True
+
+        self.overlay.clear()
+        self.ctrlc = False
+        self.ctrlz = False
+        self.show_hint_time = 0
+        return True
 
     def on_display(self) -> None:
         if self.show_hint_time > 0:

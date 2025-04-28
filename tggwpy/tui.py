@@ -5,20 +5,20 @@ import time
 import os
 import sys
 
-if sys.platform != "win32":
-    import termios
-    import tty
 
 import pytermgui as ptg
 import pytermgui.context_managers as ptgctx
-
-if sys.platform == "win32":
-    import colorama
 
 from . import mouseevent
 from . import screen
 from . import plugin
 from . import getch
+
+if sys.platform == "win32":
+    import colorama
+else:
+    import termios
+    import tty
 
 
 PtgMouseAction = ptg.ansi_interface.MouseAction
@@ -30,16 +30,16 @@ colorbg = [40, 41, 42, 43, 44, 45, 46, 47, 100, 101, 102, 103, 104, 105, 106, 10
 
 
 modemap: Dict[PtgMouseAction, mouseevent.MouseMode] = {
-    PtgMouseAction.LEFT_CLICK: mouseevent.MouseMode.LeftClick,
-    PtgMouseAction.LEFT_DRAG: mouseevent.MouseMode.LeftDrag,
-    PtgMouseAction.RIGHT_CLICK: mouseevent.MouseMode.RightClick,
-    PtgMouseAction.RIGHT_DRAG: mouseevent.MouseMode.RightDrag,
-    PtgMouseAction.SCROLL_UP: mouseevent.MouseMode.ScrollUp,
-    PtgMouseAction.SCROLL_DOWN: mouseevent.MouseMode.ScrollDown,
-    PtgMouseAction.SHIFT_SCROLL_UP: mouseevent.MouseMode.ScrollUp,
-    PtgMouseAction.SHIFT_SCROLL_DOWN: mouseevent.MouseMode.ScrollDown,
-    PtgMouseAction.HOVER: mouseevent.MouseMode.Move,
-    PtgMouseAction.RELEASE: mouseevent.MouseMode.Release,
+    PtgMouseAction.LEFT_CLICK: mouseevent.MouseMode.LEFT_CLICK,
+    PtgMouseAction.LEFT_DRAG: mouseevent.MouseMode.LEFT_DRAG,
+    PtgMouseAction.RIGHT_CLICK: mouseevent.MouseMode.RIGHT_CLICK,
+    PtgMouseAction.RIGHT_DRAG: mouseevent.MouseMode.RIGHT_DRAG,
+    PtgMouseAction.SCROLL_UP: mouseevent.MouseMode.SCROLL_UP,
+    PtgMouseAction.SCROLL_DOWN: mouseevent.MouseMode.SCROLL_DOWN,
+    PtgMouseAction.SHIFT_SCROLL_UP: mouseevent.MouseMode.SCROLL_UP,
+    PtgMouseAction.SHIFT_SCROLL_DOWN: mouseevent.MouseMode.SCROLL_DOWN,
+    PtgMouseAction.HOVER: mouseevent.MouseMode.MOVE,
+    PtgMouseAction.RELEASE: mouseevent.MouseMode.RELEASE,
 }
 
 
@@ -66,7 +66,7 @@ class TUI:
     @staticmethod
     @contextmanager
     def entry(lines: int, columns: int) -> Generator["TUI", None, None]:
-        if os.name == "nt":
+        if sys.platform == "win32":
             colorama.just_fix_windows_console()  # in case windows 7
         with ptg.win32console.enable_virtual_processing():
             # old_columns, old_lines = os.get_terminal_size()

@@ -19,7 +19,8 @@ class Test(plugin.Plugin):
                 self.overlay.write(
                     37,
                     2,
-                    f"{self.frame} c={self.change} k={self.lastkey!r} m=({self.mousey},{self.mousex}) {char!r}",
+                    f"{self.frame} c={self.change} k={self.lastkey!r} "
+                    f"m=({self.mousey},{self.mousex}) {char!r}",
                     fg=0,
                     bg=15,
                 )
@@ -27,7 +28,8 @@ class Test(plugin.Plugin):
                 self.overlay.write(
                     37,
                     2,
-                    f"{self.frame} c={self.change} k={self.lastkey!r} m=({self.mousey},{self.mousex})",
+                    f"{self.frame} c={self.change} k={self.lastkey!r} "
+                    f"m=({self.mousey},{self.mousex})",
                     fg=0,
                     bg=15,
                 )

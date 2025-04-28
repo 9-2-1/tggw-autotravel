@@ -3,14 +3,14 @@ from enum import Enum
 
 
 class MouseMode(Enum):
-    Move = 0
-    LeftClick = 1
-    LeftDrag = 2
-    RightClick = 3
-    RightDrag = 4
-    Release = 5
-    ScrollUp = 6
-    ScrollDown = 7
+    MOVE = 0
+    LEFT_CLICK = 1
+    LEFT_DRAG = 2
+    RIGHT_CLICK = 3
+    RIGHT_DRAG = 4
+    RELEASE = 5
+    SCROLL_UP = 6
+    SCROLL_DOWN = 7
 
 
 @dataclass

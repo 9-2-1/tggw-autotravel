@@ -1,16 +1,18 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 import os
+import sys
 import time
 from threading import Thread, Event
 from queue import Queue
 
-if os.name == "nt":
-    import winpty
-else:
-    import ptyprocess
 import pyte
 
 from . import screen
+
+if sys.platform == "win32":
+    import winpty
+else:
+    import ptyprocess
 
 
 def color16(color: str, default: int) -> int:
@@ -80,12 +82,12 @@ class Ptyrun:
         self.pty_data: Queue[str] = Queue()
         self.stop = Event()
 
-        if os.name == "nt":
+        if sys.platform == "win32":
             self.pty = winpty.PtyProcess.spawn(command, cwd=cwd, env=env)
             self.pty.setwinsize(lines, columns)
         else:
             self.pty = ptyprocess.PtyProcessUnicode.spawn(
-                command, dimensions=(lines, columns)
+                command, cwd=cwd, env=env, dimensions=(lines, columns)
             )
 
         self.pty_screen = pyte.Screen(columns, lines)
@@ -105,7 +107,7 @@ class Ptyrun:
                 else:
                     time.sleep(0.01)
         except EOFError:
-            return
+            pass
 
     def update_screen(self) -> bool:
         """

@@ -17,7 +17,7 @@ class Screenshot(plugin.Plugin):
 
     def on_key(self, key: str) -> bool:
         if not self.replay_mode:
-            if key in ["q", "Q"]:
+            if key in {"q", "Q"}:
                 # capture screenshot
                 if key == "q":
                     scr = self.tggw.game_screen()
@@ -40,9 +40,13 @@ class Screenshot(plugin.Plugin):
                     file.write(str(scr))
                 self.overlay.clear()
                 self.overlay.write(
-                    37, 0, f'Screenshot saved to "screenshot\\{fname}"', fg=0, bg=10
+                    37,
+                    0,
+                    f'Screenshot saved to "screenshot\\{fname}"',
+                    fg=plugin.Color.BLACK,
+                    bg=plugin.Color.BRIGHT_BLUE,
                 )
-                self.show_hint_time = 60
+                self.show_hint_time = 100
                 return False
             elif key == "w":
                 # enter replay mode
@@ -55,31 +59,39 @@ class Screenshot(plugin.Plugin):
                 return False
         else:
             # replay mode
-            if key in ["q", "k", "h", "\x1b[A", "\x1b[D"]:
+            if key in {"q", "k", "h", "\x1b[A", "\x1b[D"}:
                 # prev
                 self.replay_pos -= 1
                 if self.replay_pos == -1:
                     self.replay_pos = 0
                     self.replay(noshowtitle=True)
                     self.overlay.write(
-                        37, 0, "This is the newest screenshot.", fg=0, bg=10
+                        37,
+                        0,
+                        "This is the newest screenshot.",
+                        fg=plugin.Color.BLACK,
+                        bg=plugin.Color.BRIGHT_YELLOW,
                     )
-                    self.show_hint_time = 60
+                    self.show_hint_time = 100
                 else:
                     self.replay()
-            elif key in ["w", "j", "l", "\x1b[B", "\x1b[C"]:
+            elif key in {"w", "j", "l", "\x1b[B", "\x1b[C"}:
                 # next
                 self.replay_pos += 1
                 if self.replay_pos >= len(self.replay_list):
                     self.replay_pos = len(self.replay_list) - 1
                     self.replay(noshowtitle=True)
                     self.overlay.write(
-                        37, 0, "This is the oldest screenshot.", fg=0, bg=10
+                        37,
+                        0,
+                        "This is the oldest screenshot.",
+                        fg=plugin.Color.BLACK,
+                        bg=plugin.Color.BRIGHT_YELLOW,
                     )
-                    self.show_hint_time = 60
+                    self.show_hint_time = 100
                 else:
                     self.replay()
-            elif key in ["d"]:
+            elif key == "d":
                 if self.press_delete:
                     fname = self.replay_list.pop(self.replay_pos)
                     os.unlink(fname)
@@ -90,12 +102,18 @@ class Screenshot(plugin.Plugin):
                 else:
                     self.replay(noshowtitle=True)
                     self.press_delete = True
-                    self.overlay.write(37, 0, "Press 'd' again to delete", fg=0, bg=11)
-                    self.show_hint_time = 60
-            elif key in ["z", "\x1b"]:
+                    self.overlay.write(
+                        37,
+                        0,
+                        "Press 'd' again to delete",
+                        fg=plugin.Color.BLACK,
+                        bg=plugin.Color.BRIGHT_YELLOW,
+                    )
+                    self.show_hint_time = 100
+            elif key in {"z", "\x1b"}:
                 self.overlay.clear()
                 self.replay_mode = False
-            if key not in ["d"]:
+            if key != "d":
                 self.press_delete = False
             return False
         return True
@@ -113,8 +131,14 @@ class Screenshot(plugin.Plugin):
         if len(self.replay_list) == 0:
             self.replay_mode = False
             self.overlay.clear()
-            self.overlay.write(37, 0, "No screenshots found", fg=0, bg=11)
-            self.show_hint_time = 60
+            self.overlay.write(
+                37,
+                0,
+                "No screenshots found",
+                fg=plugin.Color.BLACK,
+                bg=plugin.Color.BRIGHT_YELLOW,
+            )
+            self.show_hint_time = 100
         fname = self.replay_list[self.replay_pos]
         self.overlay.fill(0, 0, self.overlay.lines, self.overlay.columns, fillchar=" ")
         with open(fname, "r", encoding="utf-8") as file:
@@ -132,8 +156,8 @@ class Screenshot(plugin.Plugin):
                     self.overlay.columns,
                     "\n\nError opening this screenshot, the screenshot may be broken\n"
                     "(Press 'd' twice to delete)\n\n" + traceback.format_exc(),
-                    bg=0,
-                    fg=9,
+                    bg=plugin.Color.BLACK,
+                    fg=plugin.Color.RED,
                 )
         self.show_hint_time = 0
         self.press_delete = False
@@ -144,7 +168,7 @@ class Screenshot(plugin.Plugin):
                 self.overlay.lines,
                 self.overlay.columns,
                 f'View "{fname}" [q|Left]Prev [w|Right]Next [d]Delete [z]Quit',
-                fg=0,
-                bg=10,
+                fg=plugin.Color.BLACK,
+                bg=plugin.Color.BRIGHT_BLUE,
             )
-            self.show_hint_time = 60
+            self.show_hint_time = 100

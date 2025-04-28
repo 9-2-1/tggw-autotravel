@@ -1,7 +1,3 @@
-from typing import Dict, Tuple, List
-from enum import Enum
-from dataclasses import dataclass
-
 from .. import plugin
 
 
@@ -44,9 +40,13 @@ class AutoTravel(plugin.Plugin):
         pass
 
     def debug_show(self) -> None:
-        self.overlay.write(36, 0, "DEBUG", fg=0, bg=15)
+        self.overlay.write(
+            36, 0, "DEBUG", fg=plugin.Color.BLACK, bg=plugin.Color.BRIGHT_WHITE
+        )
         if self.in_play:
-            self.overlay.write(35, 0, "Seen", fg=0, bg=15)
+            self.overlay.write(
+                35, 0, "Seen", fg=plugin.Color.BLACK, bg=plugin.Color.BRIGHT_WHITE
+            )
             # not passable
 
             # &
@@ -72,19 +72,19 @@ class AutoTravel(plugin.Plugin):
                     bg = ch0.bg
                     if ch0.text == " ":
                         bg = 2
-                    if ch0.text in ['"', "<", ">", "0", "O", ".", "~"]:
+                    if ch0.text in {'"', "<", ">", "0", "O", ".", "~"}:
                         bg = 3
-                    elif ch0.text in ["#", "^"]:
+                    elif ch0.text in {"#", "^"}:
                         bg = 5
                     elif (
                         ch0.text == "+"
-                        and ch0.fg in [1, 3, 5, 7, 8, 11, 15]
+                        and ch0.fg in {1, 3, 5, 7, 8, 11, 15}
                         and ch0.bg != 1
                     ):
                         bg = 4
                     elif (
                         ch0.text == "/"
-                        and ch0.fg in [1, 3, 5, 7, 8, 11, 15]
+                        and ch0.fg in {1, 3, 5, 7, 8, 11, 15}
                         and ch0.bg != 1
                     ):
                         bg = 3
@@ -109,10 +109,10 @@ class AutoTravel(plugin.Plugin):
 
     def on_mouse(self, mouse: plugin.MouseEvent) -> bool:
         if self.autoexplore:
-            if mouse.mode in [
-                plugin.MouseMode.LeftClick,
-                plugin.MouseMode.RightClick,
-            ]:
+            if mouse.mode in {
+                plugin.MouseMode.LEFT_CLICK,
+                plugin.MouseMode.RIGHT_CLICK,
+            }:
                 self.autoexplore = False
         return True
 

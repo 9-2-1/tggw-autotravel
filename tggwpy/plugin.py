@@ -1,5 +1,4 @@
 from . import main
-from . import ptyrun
 from . import mouseevent
 from . import screen
 from . import overlay
@@ -9,6 +8,7 @@ MouseMode = mouseevent.MouseMode
 Screen = screen.Screen
 Char = screen.Char
 Cursor = screen.Cursor
+Color = screen.Color
 
 
 class Plugin:
@@ -21,10 +21,10 @@ class Plugin:
     def __plugin_init__(self) -> None:
         pass
 
-    def on_key(self, key: str) -> bool:
+    def on_key(self, _key: str) -> bool:
         return True
 
-    def on_mouse(self, mouse: MouseEvent) -> bool:
+    def on_mouse(self, _mouse: MouseEvent) -> bool:
         return True
 
     def on_display(self) -> None:

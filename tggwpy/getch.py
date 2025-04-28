@@ -4,7 +4,7 @@ import os
 import sys
 import codecs
 
-if os.name == "nt":
+if sys.platform == "win32":
     import msvcrt
 
     def getinputb() -> bytes:
@@ -15,7 +15,6 @@ if os.name == "nt":
         return ret
 
 else:
-    import sys
     import select
 
     def getinputb() -> bytes:

@@ -23,6 +23,16 @@ from .plugins import keymap
 
 T = TypeVar("T", bound=plugin.Plugin)
 
+if sys.platform == "win32":
+    GAME = ["tggw\\tggw-patched.exe"]
+else:
+    GAME = ["wine", "cmd", "/c", "..\\tggw-wine.cmd"]
+REAL_LINES = 52
+LINES = 38
+COLUMNS = 92
+CYCLE_TIME = 0.01
+FRAME_TIME = 0.015
+
 
 class TGGW:
 
@@ -64,16 +74,7 @@ class TGGW:
 
     def run(self) -> None:
         patch.patch()
-        if sys.platform == "win32":
-            GAME = [r"tggw\tggw-patched.exe"]
-        else:
-            GAME = ["wine", "cmd", "/c", "tggw-wine.cmd"]
         # game refused to run under 52 lines even only need 38
-        REAL_LINES = 52
-        LINES = 38
-        COLUMNS = 92
-        CYCLE_TIME = 0.01
-        FRAME_TIME = 0.015
         self.game = ptyrun.Ptyrun(GAME, REAL_LINES, COLUMNS, cwd="tggw")
         self.plugins = [
             x(self)
@@ -162,12 +163,10 @@ class TGGW:
                         os.kill(0, signal.SIGTSTP)
                     self.is_suspend = False
                     continue
-                elif self.is_interrupt:
+                if self.is_interrupt:
                     if self.game.is_running():
                         self.game.terminate()
-                    break
-                else:  # self.is_exit:
-                    break
+                break
             except Exception:
                 traceback.print_exc()
                 print("Continue? (Y/N): ", end="", flush=True)
