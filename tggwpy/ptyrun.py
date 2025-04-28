@@ -15,7 +15,7 @@ else:
     import ptyprocess
 
 
-def color16(color: str, default: int) -> int:
+def color16(color: str, default: int) -> screen.Color:
     colors = {
         "default": default,
         "000000": 0,
@@ -54,13 +54,13 @@ def color16(color: str, default: int) -> int:
         "brightwhite": 15,
     }
     if color in colors:
-        return colors[color]
+        return screen.Color(colors[color])
     r, g, b = int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16)
     bright = int(max(r, g, b) == 0xFF)
     rbit = int(r > 0x60)
     gbit = int(g > 0x60)
     bbit = int(b > 0x60)
-    return bright * 8 + bbit * 4 + gbit * 2 + rbit
+    return screen.Color(bright * 8 + bbit * 4 + gbit * 2 + rbit)
 
 
 class Ptyrun:

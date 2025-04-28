@@ -27,8 +27,8 @@ class Overlay:
         h: Optional[int] = None,
         w: Optional[int] = None,
         *,
-        fg: int = screen.Color.WHITE,
-        bg: int = screen.Color.BLACK,
+        fg: screen.Color = screen.Color.WHITE,
+        bg: screen.Color = screen.Color.BLACK,
         fillchar: str = " ",
     ) -> None:
         for yi in range(y, y + h if h is not None else self.lines):
@@ -41,8 +41,8 @@ class Overlay:
         x: int,
         text: str,
         *,
-        fg: int = screen.Color.WHITE,
-        bg: int = screen.Color.BLACK,
+        fg: screen.Color = screen.Color.WHITE,
+        bg: screen.Color = screen.Color.BLACK,
     ) -> None:
         for c in text:
             self.data[y][x] = screen.Char(c, fg, bg)
@@ -58,8 +58,8 @@ class Overlay:
         w: int,
         text: str,
         *,
-        fg: int = screen.Color.WHITE,
-        bg: int = screen.Color.BLACK,
+        fg: screen.Color = screen.Color.WHITE,
+        bg: screen.Color = screen.Color.BLACK,
     ) -> None:
         yi = y
         xi = x

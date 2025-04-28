@@ -4,20 +4,6 @@ from enum import IntEnum
 from dataclasses import dataclass
 
 
-@dataclass
-class Char:
-    text: str
-    fg: int
-    bg: int
-
-
-@dataclass
-class Cursor:
-    y: int = 0
-    x: int = 0
-    hidden: bool = False
-
-
 class Color(IntEnum):
     BLACK = 0
     RED = 1
@@ -37,11 +23,28 @@ class Color(IntEnum):
     BRIGHT_WHITE = 15
 
 
+@dataclass
+class Char:
+    text: str
+    fg: Color
+    bg: Color
+
+
+@dataclass
+class Cursor:
+    y: int = 0
+    x: int = 0
+    hidden: bool = False
+
+
 class Screen:
     def __init__(self, lines: int, columns: int) -> None:
         self.lines = lines
         self.columns = columns
-        self.data = [[Char(" ", 7, 0) for x in range(columns)] for y in range(lines)]
+        self.data = [
+            [Char(" ", Color.WHITE, Color.BLACK) for x in range(columns)]
+            for y in range(lines)
+        ]
         self.cursor = Cursor()
 
     def findtext(self, text: str) -> List[Tuple[int, int]]:
@@ -141,7 +144,9 @@ class Screen:
                 char_fg = lines[2 + scr_lines + y][x]
                 char_bg = lines[3 + scr_lines * 2 + y][x]
                 ret.data[y][x] = Char(
-                    text=char_text, fg=int(char_fg, 16), bg=int(char_bg, 16)
+                    text=char_text,
+                    fg=Color(int(char_fg, 16)),
+                    bg=Color(int(char_bg, 16)),
                 )
         if 3 + scr_lines * 3 < len(lines) and lines[3 + scr_lines * 3] == "cursor:":
             # have cursor data

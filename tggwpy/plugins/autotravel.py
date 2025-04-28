@@ -71,27 +71,27 @@ class AutoTravel(plugin.Plugin):
                     ch0 = scr.data[y][x]
                     bg = ch0.bg
                     if ch0.text == " ":
-                        bg = 2
+                        bg = plugin.Color.MAGENTA
                     if ch0.text in {'"', "<", ">", "0", "O", ".", "~"}:
-                        bg = 3
+                        bg = plugin.Color.GREEN
                     elif ch0.text in {"#", "^"}:
-                        bg = 5
+                        bg = plugin.Color.RED
                     elif (
                         ch0.text == "+"
                         and ch0.fg in {1, 3, 5, 7, 8, 11, 15}
                         and ch0.bg != 1
                     ):
-                        bg = 4
+                        bg = plugin.Color.YELLOW
                     elif (
                         ch0.text == "/"
                         and ch0.fg in {1, 3, 5, 7, 8, 11, 15}
                         and ch0.bg != 1
                     ):
-                        bg = 3
-                    elif ch0.text == "X" and ch0.fg != 8:
-                        bg = 5
-                    elif ch0.text == "o" and ch0.fg != 8:
-                        bg = 5
+                        bg = plugin.Color.CYAN
+                    elif ch0.text == "X" and ch0.fg != plugin.Color.BRIGHT_BLACK:
+                        bg = plugin.Color.YELLOW
+                    elif ch0.text == "o" and ch0.fg != plugin.Color.BRIGHT_BLACK:
+                        bg = plugin.Color.YELLOW
                     ch1 = plugin.Char(ch0.text, ch0.fg, bg)
                     self.overlay.data[y][x] = ch1
 
