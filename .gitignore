@@ -25,3 +25,5 @@ __pycache__
 # plugin error log
 error.log
 
+# FreeFileSync
+*.ffs_*
