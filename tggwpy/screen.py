@@ -111,20 +111,16 @@ class Screen:
         ret = "text:\n"
         ret += "\n".join("".join(char.text for char in line) for line in scr)
         ret += "\nfg:\n"
-        ret += "\n".join(
-            "".join("0123456789ABCDEF"[char.fg] for char in line) for line in scr
-        )
+        ret += "\n".join("".join(f"{char.fg:x}" for char in line) for line in scr)
         ret += "\nbg:\n"
-        ret += "\n".join(
-            "".join("0123456789ABCDEF"[char.bg] for char in line) for line in scr
-        )
+        ret += "\n".join("".join(f"{char.bg:x}" for char in line) for line in scr)
         ret += "\ncursor:\n"
         ret += f"{self.cursor.y}, {self.cursor.x}, {self.cursor.hidden}"
         return ret
 
     @staticmethod
-    def parse(data: str) -> "Screen":
-        lines = [line.replace("\r", "") for line in data.split("\n")]
+    def parse(text: str) -> "Screen":
+        lines = [line.replace("\r", "") for line in text.split("\n")]
         if lines[0] != "text:":
             raise ValueError("missing text:")
         scr_columns = len(lines[1])
