@@ -18,7 +18,7 @@ class Test(plugin.Plugin):
                 char = scr.data[self.mousey][self.mousex]
                 self.overlay.write(
                     37,
-                    2,
+                    0,
                     f"{self.frame} c={self.change} k={self.lastkey!r} "
                     f"m=({self.mousey},{self.mousex}) {char!r}",
                     fg=plugin.Color.BLACK,
@@ -27,7 +27,7 @@ class Test(plugin.Plugin):
             else:
                 self.overlay.write(
                     37,
-                    2,
+                    0,
                     f"{self.frame} c={self.change} k={self.lastkey!r} "
                     f"m=({self.mousey},{self.mousex})",
                     fg=plugin.Color.BLACK,
