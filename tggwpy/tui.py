@@ -11,7 +11,6 @@ import pytermgui.context_managers as ptgctx
 
 from . import mouseevent
 from . import screen
-from . import plugin
 from . import getch
 
 if sys.platform == "win32":
@@ -60,7 +59,6 @@ class TUI:
         self.drawn_screen = screen.Screen(lines, columns)
         self.mouse_translate = mouse_translate
         self.terminal_too_small = False
-        self.plugins: List[plugin.Plugin] = []
         self.getch_unicode = getch.GetchUnicode()
 
     @staticmethod

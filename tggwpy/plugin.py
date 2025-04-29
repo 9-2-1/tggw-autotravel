@@ -1,4 +1,7 @@
-from . import main
+from abc import abstractmethod
+from typing import Type, TypeVar, Tuple
+
+from . import screen
 from . import mouseevent
 from . import screen
 from . import overlay
@@ -11,11 +14,40 @@ Cursor = screen.Cursor
 Color = screen.Color
 
 
+T = TypeVar("T", bound="Plugin")
+
+
+class PluginAPI:
+
+    @abstractmethod
+    def interrupt(self) -> None: ...
+
+    @abstractmethod
+    def getsize(self) -> Tuple[int, int]: ...
+
+    @abstractmethod
+    def suspend(self) -> None: ...
+
+    @abstractmethod
+    def full_redraw(self) -> None: ...
+
+    @abstractmethod
+    def getplugin(self, cls: Type[T]) -> T: ...
+
+    @abstractmethod
+    def game_screen(self) -> screen.Screen: ...
+
+    @abstractmethod
+    def tui_screen(self) -> screen.Screen: ...
+
+    @abstractmethod
+    def sendtext(self, text: str) -> None: ...
+
+
 class Plugin:
-    def __init__(self, tggw: "main.TGGW") -> None:
-        assert tggw.game is not None
+    def __init__(self, tggw: PluginAPI) -> None:
         self.tggw = tggw
-        self.overlay = overlay.Overlay(tggw.game.lines, tggw.game.columns)
+        self.overlay = overlay.Overlay(*tggw.getsize())
         self.__plugin_init__()
 
     def __plugin_init__(self) -> None:

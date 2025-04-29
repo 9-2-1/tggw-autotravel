@@ -1,5 +1,5 @@
 import time
-from typing import List, Type, TypeVar, Optional
+from typing import List, Type, TypeVar, Optional, Tuple
 import os
 import sys
 import signal
@@ -34,7 +34,7 @@ CYCLE_TIME = 0.01
 FRAME_TIME = 0.015
 
 
-class TGGW:
+class TGGW(plugin.PluginAPI):
 
     def __init__(self) -> None:
         self.is_interrupt = False
@@ -43,6 +43,10 @@ class TGGW:
         self.game: Optional[ptyrun.Ptyrun] = None
         self.tui: Optional[tui.TUI] = None
         self.plugins: List[plugin.Plugin] = []
+
+    def getsize(self) -> Tuple[int, int]:
+        assert self.game is not None
+        return self.game.screen.lines, self.game.screen.columns
 
     def interrupt(self) -> None:
         self.is_interrupt = True
