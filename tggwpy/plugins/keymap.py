@@ -3,7 +3,7 @@ from .. import plugin
 # Translate arrow keys to HJKL for linux
 KEYMAP = {
     "\x1b[A": "k",  # Up
-    "\x1b[": "j",  # Down
+    "\x1b[B": "j",  # Down
     "\x1b[C": "l",  # Right
     "\x1b[D": "h",  # Left
     "\x1b[1;2A": "K",  # Shift+Up
