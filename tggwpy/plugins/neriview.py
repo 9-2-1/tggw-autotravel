@@ -11,6 +11,9 @@ class NeriMap:
     parse the map pane
     """
 
+    lines: int
+    columns: int
+    name: str
     player_y: int
     player_x: int
     data: List[List[plugin.Char]]
@@ -27,6 +30,7 @@ class NeriMap:
 
     @staticmethod
     def parse_screen(scr: plugin.Screen, y0: int, x0: int, h: int, w: int) -> "NeriMap":
+        name = scr.readtext(y0, x0 + 2, size=w - 2, end="-")
         if scr.cursor.hidden:
             raise NotImplementedError("Not a map: Cursor is hidden")
         y1 = y0 + 1
@@ -40,7 +44,7 @@ class NeriMap:
         data: List[List[plugin.Char]] = [
             [scr.data[y][x] for x in range(x1, x2)] for y in range(y1, y2)
         ]
-        return NeriMap(player_y, player_x, data)
+        return NeriMap(h - 2, w - 2, name, player_y, player_x, data)
 
 
 class TextParser:
@@ -302,10 +306,12 @@ class NeriSeen:
     features: NeriLegend
 
     @staticmethod
-    def parse_screen(scr: plugin.Screen, y: int, x: int, h: int, w: int) -> "NeriSeen":
+    def parse_screen(
+        scr: plugin.Screen, y: int, x: int, h: int, w: int
+    ) -> Union["NeriSeen", NotImplementedError]:
         title = scr.readtext(y, x + 2, size=w - 2, end="-")
         if title != "Seen":
-            raise NotImplementedError("Not a seen panel: title")
+            return NotImplementedError("Not a seen panel: title")
         items = NeriLegend.parse_screen(scr, y + 1, x + 1, 9, w - 2)
         # 2 pane share one border so the y is y+9, not y+10
         monsters = NeriLegend.parse_screen(scr, y + 9, x + 1, 9, w - 2)
@@ -325,10 +331,10 @@ class NeriStatus:
     @staticmethod
     def parse_screen(
         scr: plugin.Screen, y: int, x: int, h: int, w: int
-    ) -> "NeriStatus":
+    ) -> Union["NeriStatus", NotImplementedError]:
         title = scr.readtext(y, x + 2, size=w - 2, end="-")
         if title != "Status":
-            raise NotImplementedError("Not a status panel: title")
+            return NotImplementedError("Not a status panel: title")
         status: List[str] = []
         for y in range(y + 1, y + h - 1):
             line = scr.readtext(y, x + 1, size=w - 2).strip()
@@ -527,8 +533,8 @@ class NeriLeft:
 
 @dataclass
 class NeriSeenStatus:
-    top: Optional[NeriSeen]
-    bottom: Optional[NeriStatus]
+    top: Union[NeriSeen, NotImplementedError]
+    bottom: Union[NeriStatus, NotImplementedError]
 
     @staticmethod
     def parse_screen(
