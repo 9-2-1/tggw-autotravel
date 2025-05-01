@@ -1,5 +1,4 @@
 from typing import Dict, List, Optional
-import os
 import sys
 import time
 from threading import Thread, Event
