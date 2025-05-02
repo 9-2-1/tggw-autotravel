@@ -5,7 +5,7 @@ import sys
 import signal
 import traceback
 
-from . import ptyrun
+from . import pdcurserun
 from . import tui
 from . import plugin
 from . import screen
@@ -34,13 +34,13 @@ CYCLE_TIME = 0.01
 FRAME_TIME = 0.03
 
 
-class TGGW(plugin.PluginAPI):
+class MainGame(plugin.PluginAPI):
 
     def __init__(self) -> None:
         self.is_interrupt = False
         self.is_suspend = False
         self.is_exit = False
-        self.game: Optional[ptyrun.Ptyrun] = None
+        self.game: Optional[pdcurserun.PdcurseRun] = None
         self.tui: Optional[tui.TUI] = None
         self.plugins: List[plugin.Plugin] = []
 
@@ -77,9 +77,10 @@ class TGGW(plugin.PluginAPI):
         self.game.sendtext(text)
 
     def run(self) -> None:
-        patch.patch()
+        patch.pdcurse_patch()
         # game refused to run under 52 lines even only need 38
-        self.game = ptyrun.Ptyrun(GAME, REAL_LINES, COLUMNS, cwd="tggw")
+        # self.game = ptyrun.Ptyrun(GAME, REAL_LINES, COLUMNS, cwd="tggw")
+        self.game = pdcurserun.PdcurseRun(GAME, LINES, COLUMNS, cwd="tggw")
         self.plugins = [
             x(self)
             for x in [

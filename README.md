@@ -1,3 +1,7 @@
+The patched pdcurses.dll is from [pdcurses-fake](https://github.com/9-2-1/pdcurses-fake)
+
+---
+
 # How to play
 
 ## Windows
