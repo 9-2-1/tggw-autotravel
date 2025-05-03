@@ -144,21 +144,24 @@ class Screenshot(plugin.Plugin):
         with open(fname, "r", encoding="utf-8") as file:
             try:
                 scr = plugin.Screen.parse(file.read())
-                for y in range(scr.lines):
-                    for x in range(scr.columns):
+                for y in range(self.overlay.lines):
+                    for x in range(self.overlay.columns):
+                        if y >= scr.lines or x >= scr.columns:
+                            continue
                         self.overlay.data[y][x] = scr.data[y][x]
                         self.overlay.cursor = scr.cursor
             except Exception:
                 self.overlay.write_rect(
-                    37,
+                    0,
                     0,
                     self.overlay.lines,
                     self.overlay.columns,
-                    "\n\nError opening this screenshot, the screenshot may be broken\n"
+                    "Error opening this screenshot, the screenshot may be broken\n"
                     "(Press 'd' twice to delete)\n\n" + traceback.format_exc(),
                     bg=plugin.Color.BLACK,
                     fg=plugin.Color.RED,
                 )
+                self.overlay.cursor = plugin.Cursor(0, 0, True)
         self.show_hint_time = 0
         self.press_delete = False
         if not noshowtitle:
