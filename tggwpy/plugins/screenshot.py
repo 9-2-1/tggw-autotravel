@@ -32,17 +32,17 @@ class Screenshot(plugin.Plugin):
                 os.makedirs("screenshot", exist_ok=True)
                 fname0 = fname
                 counter = 1
-                while os.path.exists(f"screenshot\\{fname}.txt"):
+                while os.path.exists(f"screenshot/{fname}.txt"):
                     counter += 1
                     fname = f"{fname0}_{counter}"
-                fname = f"screenshot\\{fname}.txt"
+                fname = f"screenshot/{fname}.txt"
                 with open(fname, "w", encoding="utf-8") as file:
                     file.write(str(scr))
                 self.overlay.clear()
                 self.overlay.write(
                     37,
                     0,
-                    f'Screenshot saved to "screenshot\\{fname}"',
+                    f'Screenshot saved to "screenshot/{fname}"',
                     fg=plugin.Color.BLACK,
                     bg=plugin.Color.BRIGHT_BLUE,
                 )
@@ -51,7 +51,7 @@ class Screenshot(plugin.Plugin):
             elif key == "w":
                 # enter replay mode
                 self.replay_mode = True
-                self.replay_list = glob.glob("screenshot\\tggw_*.txt")
+                self.replay_list = glob.glob("screenshot/tggw_*.txt")
                 # reverse sort
                 self.replay_list.sort(reverse=True)
                 self.replay_pos = 0
