@@ -7,6 +7,7 @@ from threading import Thread, Event
 import subprocess
 
 
+from . import baserun
 from . import screen
 from . import errorlog
 
@@ -418,11 +419,6 @@ InputEvent = Union[InputKeyEvent]
 
 
 @dataclass
-class OutputDoUpdate:
-    pass
-
-
-@dataclass
 class OutputCursorMove:
     y: int
     x: int
@@ -447,7 +443,6 @@ class OutputCharUpdate:
 
 
 OutputEvent = Union[
-    OutputDoUpdate,
     OutputCursorMove,
     OutputResizeScreen,
     OutputCursorSet,
@@ -455,7 +450,14 @@ OutputEvent = Union[
 ]
 
 
-class PdcurseRun:
+def bit_reverse(v: int) -> int:
+    bit1 = (v >> 0) & 1
+    bit2 = (v >> 1) & 1
+    bit3 = (v >> 2) & 1
+    return (bit1 << 2) | (bit2 << 1) | bit3
+
+
+class PdcurseRun(baserun.Baserun):
     """
     The original game runner
     """
@@ -479,7 +481,6 @@ class PdcurseRun:
             cwd=cwd,
             env=env,
             universal_newlines=True,
-            bufsize=0,
         )
 
         self.stop: Event = Event()
@@ -488,7 +489,6 @@ class PdcurseRun:
 
         self.input_queue: Queue[InputEvent] = Queue()
         self.output_queue: Queue[OutputEvent] = Queue()
-        self.doupdate_list: List[OutputEvent] = []
 
         self.stdout_thread = Thread(target=self._interactive, daemon=True)
         self.stdout_thread.start()
@@ -503,7 +503,7 @@ class PdcurseRun:
         assert self.process.stdout is not None
         try:
             while self.process.poll() is None and not self.stop.is_set():
-                instr = self.process.stdin.read()
+                instr = self.process.stdout.readline().strip()
                 if instr != "":
                     with errorlog.errorlog():
                         # parse stdin...
@@ -512,6 +512,7 @@ class PdcurseRun:
                             pass
                         elif args[0] == "scr_close":
                             self.stop.set()
+                            self.process.stdin.close()
                             return
                         elif args[0] == "gotoyx":
                             # gotoyx %d %d
@@ -520,8 +521,6 @@ class PdcurseRun:
                             self.screen.cursor.y = y
                             self.screen.cursor.x = x
                             self.output_queue.put(OutputCursorMove(y, x))
-                        elif args[0] == "doupdate":
-                            self.output_queue.put(OutputDoUpdate())
                         elif args[0] == "flushinp":
                             # flushinp
                             while True:
@@ -545,16 +544,22 @@ class PdcurseRun:
                             x = int(args[2])
                             data = args[3]
                             char_list: List[screen.Char] = []
-                            for i in range(len(data) // 8):
-                                chardata = data[i * 8 : (i + 1) * 8]
-                                fg = int(chardata[0:1], 16)
-                                bg = int(chardata[1:2], 16)
-                                attr = int(chardata[2:4], 16)
-                                char = int(chardata[4:8], 16)
-                                if attr & 0x00010000:  # A_ALTCHARSET
+                            for i in range(len(data) // 12):
+                                chardata = data[i * 12 : (i + 1) * 12]
+                                fg = int(chardata[0:3], 16)
+                                bg = int(chardata[3:6], 16)
+                                fg = bit_reverse(fg)
+                                bg = bit_reverse(bg)
+                                attr = int(chardata[6:8], 16)
+                                char = int(chardata[8:12], 16)
+                                if attr & 0x1:  # A_ALTCHARSET
                                     if 0 <= char <= 127:
                                         char = acs_map[char]
-                                if attr & 0x00200000:  # A_REVERSE
+                                if attr & 0x40:  # A_BLINK
+                                    bg |= 8
+                                if attr & 0x80:  # A_BOLD
+                                    fg |= 8
+                                if attr & 0x20:  # A_REVERSE
                                     fg, bg = bg, fg
                                 # other attrs are not supported
                                 char_list.append(
@@ -562,31 +567,31 @@ class PdcurseRun:
                                         chr(char), screen.Color(fg), screen.Color(bg)
                                     )
                                 )
-                            self.output_queue.put(OutputCharUpdate(y, x + i, char_list))
+                            self.output_queue.put(OutputCharUpdate(y, x, char_list))
                         elif args[0] == "reqid":
                             reqid = int(args[1])
                             reply = ""
                             if args[2] == "get_cursor_mode":
                                 # reqid %d get_cursor_mode
                                 reply = "0" if self.screen.cursor.hidden else "1"
-                            elif args[0] == "get_rows":
+                            elif args[2] == "get_rows":
                                 # reqid %d get_rows
                                 reply = str(self.screen.lines)
-                            elif args[0] == "get_columns":
+                            elif args[2] == "get_columns":
                                 # reqid %d get_columns
                                 reply = str(self.screen.columns)
-                            elif args[0] == "check_key":
+                            elif args[2] == "check_key":
                                 # reqid %d check_key
-                                reply = "1" if self.input_queue.empty() else "0"
-                            elif args[0] == "get_key":
-                                # repid %d get_key modifiers %d
+                                reply = "0" if self.input_queue.empty() else "1"
+                            elif args[2] == "get_key":
+                                # repid %d get_key %d
                                 try:
                                     key = self.input_queue.get_nowait()
                                     reply = f"{key.char} {1 if key.key_code else 0} {key.modifiers}"
                                 except Empty:
                                     reply = "-1 0 0"  # ERR = -1
-                            self.process.stdout.write(f"{reqid} {reply}\n")
-                            self.process.stdout.flush()
+                            self.process.stdin.write(f"{reqid} {reply}\r\n")
+                            self.process.stdin.flush()
 
                 else:
                     time.sleep(0.01)
@@ -604,17 +609,30 @@ class PdcurseRun:
                     # Only create or open file when here are errors.
                     # It is OK to open-close file as stderr is seldom used
                     with open(err_file_name, "a", encoding="utf-8") as err_file:
-                        print(f"{timestr}", file=err_file)
+                        err_file.write(err)
                 else:
                     time.sleep(0.01)
         except EOFError:
             pass
 
-    def doupdate(self) -> None:
-        for output in self.doupdate_list:
+    def update_screen(self) -> bool:
+        """
+        Apply new pty updates to screen.Screen
+        Return true if there are new updates
+        """
+        doupdate = False
+        while True:
+            try:
+                output = self.output_queue.get_nowait()
+            except:
+                break
+            doupdate = True
             if isinstance(output, OutputCharUpdate):
                 for i, char in enumerate(output.char_list):
-                    self.screen.data[output.y][output.x + i] = char
+                    try:
+                        self.screen.data[output.y][output.x + i] = char
+                    except IndexError:
+                        pass
             elif isinstance(output, OutputCursorMove):
                 self.screen.cursor.y = output.y
                 self.screen.cursor.x = output.x
@@ -628,26 +646,6 @@ class PdcurseRun:
                     * self.screen.columns
                     for _ in range(self.screen.lines)
                 ]
-            elif isinstance(output, OutputDoUpdate):
-                raise ValueError("OutputDoUpdate should not be in doupdate_list")
-        self.doupdate_list = []
-
-    def update_screen(self) -> bool:
-        """
-        Apply new pty updates to screen.Screen
-        Return true if there are new updates
-        """
-        doupdate = False
-        while True:
-            try:
-                output = self.output_queue.get_nowait()
-            except:
-                break
-            if isinstance(output, OutputDoUpdate):
-                self.doupdate()
-                doupdate = True
-            else:
-                self.doupdate_list.append(output)
         return doupdate
 
     def sendtext(self, text: str) -> None:
@@ -665,3 +663,9 @@ class PdcurseRun:
 
     def close(self) -> None:
         self.stop.set()
+        assert self.process.stdin is not None
+        assert self.process.stdout is not None
+        assert self.process.stderr is not None
+        self.process.stdin.close()
+        self.process.stdout.close()
+        self.process.stderr.close()

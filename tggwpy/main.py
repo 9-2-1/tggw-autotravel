@@ -5,6 +5,8 @@ import sys
 import signal
 import traceback
 
+from . import baserun
+from . import ptyrun
 from . import pdcurserun
 from . import tui
 from . import plugin
@@ -23,8 +25,10 @@ from .plugins import keymap
 
 T = TypeVar("T", bound=plugin.Plugin)
 
-if sys.platform == "win32":
-    GAME = ["tggw\\tggw-patched.exe"]
+PDCURSE_MODE = True
+
+if sys.platform == "win32" or PDCURSE_MODE:
+    GAME = ["tggw\\tggw-pa7ched.exe"]
 else:
     GAME = ["wine", "cmd", "/c", "..\\tggw-wine.cmd"]
 REAL_LINES = 52
@@ -40,7 +44,7 @@ class MainGame(plugin.PluginAPI):
         self.is_interrupt = False
         self.is_suspend = False
         self.is_exit = False
-        self.game: Optional[pdcurserun.PdcurseRun] = None
+        self.game: Optional[baserun.Baserun] = None
         self.tui: Optional[tui.TUI] = None
         self.plugins: List[plugin.Plugin] = []
 
@@ -77,10 +81,16 @@ class MainGame(plugin.PluginAPI):
         self.game.sendtext(text)
 
     def run(self) -> None:
-        patch.pdcurse_patch()
+        if PDCURSE_MODE:
+            patch.pdcurse_patch()
+        else:
+            patch.patch()
         # game refused to run under 52 lines even only need 38
         # self.game = ptyrun.Ptyrun(GAME, REAL_LINES, COLUMNS, cwd="tggw")
-        self.game = pdcurserun.PdcurseRun(GAME, LINES, COLUMNS, cwd="tggw")
+        if PDCURSE_MODE:
+            self.game = pdcurserun.PdcurseRun(GAME, LINES, COLUMNS, cwd="tggw")
+        else:
+            self.game = ptyrun.Ptyrun(GAME, REAL_LINES, COLUMNS, cwd="tggw")
         self.plugins = [
             x(self)
             for x in [
@@ -171,6 +181,7 @@ class MainGame(plugin.PluginAPI):
                 if self.is_interrupt:
                     if self.game.is_running():
                         self.game.terminate()
+                self.game.close()
                 break
             except Exception:
                 traceback.print_exc()
@@ -179,10 +190,10 @@ class MainGame(plugin.PluginAPI):
                 getch_unicode = getch.GetchUnicode()
                 while True:
                     ans = getch_unicode.getinput()[:1].lower()
-                    if ans == "N":
+                    if ans == "n":
                         conti = False
                         break
-                    if ans == "Y":
+                    if ans == "y":
                         conti = True
                         break
                     time.sleep(CYCLE_TIME)

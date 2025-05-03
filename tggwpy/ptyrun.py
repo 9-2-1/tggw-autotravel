@@ -6,6 +6,7 @@ from queue import Queue
 
 import pyte
 
+from . import baserun
 from . import screen
 
 if sys.platform == "win32":
@@ -62,7 +63,7 @@ def color16(color: str, default: int) -> screen.Color:
     return screen.Color(bright * 8 + bbit * 4 + gbit * 2 + rbit)
 
 
-class Ptyrun:
+class Ptyrun(baserun.Baserun):
     """
     The original game runner
     """
@@ -136,6 +137,10 @@ class Ptyrun:
         if self.is_running():
             self.pty.write(text)
 
+    def sendkey(self, key_code: int, modifiers: int) -> None:
+        if self.is_running():
+            self.pty.write(chr(key_code))
+
     def is_running(self) -> bool:
         # Make mypy happy
         return bool(self.pty.isalive())
@@ -145,4 +150,4 @@ class Ptyrun:
 
     def close(self) -> None:
         self.stop.set()
-        self.pty.close()
+        self.pty.close(force=True)

@@ -102,8 +102,8 @@ class TUI:
         # directly construct escape sequence for speed
         cx = -1
         cy = -1
-        fg = -1
-        bg = -1
+        fg: Optional[int] = None
+        bg: Optional[int] = None
         # hide cursor
         refresh_str = "\x1b[?25l"
         for y in range(self.lines):
@@ -124,11 +124,11 @@ class TUI:
                     cx = x
                     cy = y
                 char = self.screen.data[y][x]
-                if fg != char.fg:
+                if fg is None or fg != char.fg:
                     fg = char.fg
                     # term.{color}
                     refresh_str += f"\x1b[{colorfg[fg]}m"
-                if bg != char.bg:
+                if bg is None or bg != char.bg:
                     bg = char.bg
                     # term.on_{color}
                     refresh_str += f"\x1b[{colorbg[bg]}m"
@@ -162,15 +162,15 @@ class TUI:
         # directly construct escape sequence for speed
         refresh_line_str: List[str] = []
         for line in self.screen.data:
-            fg = 7
-            bg = 0
+            fg: Optional[int] = None
+            bg: Optional[int] = None
             line_str = ""
             for char in line:
-                if fg != char.fg:
+                if fg is None or fg != char.fg:
                     fg = char.fg
                     # term.{color}
                     line_str += f"\x1b[{colorfg[fg]}m"
-                if bg != char.bg:
+                if bg is None or bg != char.bg:
                     bg = char.bg
                     # term.on_{color}
                     line_str += f"\x1b[{colorbg[bg]}m"
@@ -196,7 +196,7 @@ class TUI:
         if ch == "":
             endtime = time.monotonic() + timeout
             while ch == "" and time.monotonic() < endtime:
-                time.sleep(0.005)
+                time.sleep(0.01)
                 ch = self.getch_unicode.getinput()
         if ch == "":
             return None
