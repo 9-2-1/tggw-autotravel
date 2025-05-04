@@ -2,6 +2,16 @@ The patched pdcurses.dll is from [pdcurses-fake](https://github.com/9-2-1/pdcurs
 
 ---
 
+# TODO
+- [X] Unicode (Screen.screen)
+- [ ] Monster-aware autotravel
+- [ ] Autoexplore
+- [ ] Cross-level autotravel
+- [ ] Terrain mark
+- [ ] Translate
+
+---
+
 # How to play
 
 ## Windows

@@ -1,7 +1,8 @@
 from typing import List, Tuple, Optional
 from enum import IntEnum
-
 from dataclasses import dataclass
+
+import wcwidth
 
 
 class Color(IntEnum):
@@ -62,12 +63,13 @@ class Screen:
         bg: Optional[int] = None,
     ) -> List[Tuple[int, int]]:
         ret: List[Tuple[int, int]] = []
+        text_list = Screen.align_str(text)
         for yi in range(y, y + h):
-            for xi in range(x, x + w - (len(text) - 1)):
+            for xi in range(x, x + w - (len(text_list) - 1)):
                 found = True
-                for i in range(len(text)):
+                for i in range(len(text_list)):
                     char = self.data[yi][xi + i]
-                    if char.text != text[i]:
+                    if char.text != text_list[i]:
                         found = False
                         break
                     if fg is not None and char.fg != fg:
@@ -95,7 +97,8 @@ class Screen:
             x1 = min(x + size, self.columns)
         else:
             x1 = self.columns
-        for xi in range(x, x1):
+        xi = x
+        while xi < x1:
             char = self.data[y][xi]
             if end is not None and char.text == end:
                 break
@@ -104,9 +107,11 @@ class Screen:
             if bg is not None and char.bg != bg:
                 break
             ret += char.text
+            xi += wcwidth.wcswidth(char.text)
         return ret
 
     def __str__(self) -> str:
+        self.fix_wide_char()
         scr = self.data
         ret = "text:\n"
         ret += "\n".join("".join(char.text for char in line) for line in scr)
@@ -117,6 +122,70 @@ class Screen:
         ret += "\ncursor:\n"
         ret += f"{self.cursor.y}, {self.cursor.x}, {self.cursor.hidden}"
         return ret
+
+    @staticmethod
+    def align_str(text: str) -> List[str]:
+        """
+        align wide char to screen
+        pad empty space to right for wide char
+        example:
+        "a" take 1 width but CJK characters like "你" "あ" take 2 width
+        input: "hello 你好 こんいちは"
+        output: [
+            "h", "e", "l", "l", "o", " ",
+            "你", "", "好", "", "こ", "", "ん", "",
+            "い", "", "ち", "", "は", ""
+        ]
+        """
+        buf = ""
+        prev_buf = ""
+        width_prev = 0  # For composes
+        char_list: List[str] = []
+        for ch in text:
+            buf += ch
+            buf_width = wcwidth.wcswidth(buf)
+            if buf_width > width_prev and width_prev != 0:
+                # write out
+                char_list.append(prev_buf)
+                for i in range(width_prev - 1):
+                    char_list.append("")  # paddings
+                buf = ch
+                buf_width = wcwidth.wcswidth(buf)
+                prev_buf = ch
+                width_prev = buf_width
+            else:
+                prev_buf = buf
+                width_prev = buf_width
+        if buf != "" and buf_width > 0:
+            char_list.append(buf)
+            for i in range(buf_width - 1):
+                char_list.append("")  # paddings
+
+        return char_list
+
+    def fix_wide_char(self) -> None:
+        """
+        fix wide char in screen line
+        ensure the next char after a wide char is a empty char ""
+        so it can be displayed correctly and parsed correctly
+        """
+        return
+        for line in self.data:
+            width_left = 0
+            width_fg = Color.WHITE
+            width_bg = Color.BLACK
+            for i, char in enumerate(line):
+                if width_left > 0:
+                    line[i] = Char("", width_fg, width_bg)
+                else:
+                    width = wcwidth.wcswidth(char.text)
+                    if width == 0:
+                        line[i] = Char(" ", char.fg, char.bg)
+                        width = 1
+                    width_fg = char.fg
+                    width_bg = char.bg
+                    width_left = width
+                width_left -= 1
 
     @staticmethod
     def parse(text: str) -> "Screen":
@@ -135,8 +204,11 @@ class Screen:
             raise ValueError("missing bg:")
         ret = Screen(scr_lines, scr_columns)
         for y in range(scr_lines):
+            # align wide text into screen, using wcwidth to determine width
+            # assign colors
+            char_text_list = Screen.align_str(lines[1 + y])
             for x in range(scr_columns):
-                char_text = lines[1 + y][x]
+                char_text = char_text_list[x] if x < len(char_text_list) else " "
                 char_fg = lines[2 + scr_lines + y][x]
                 char_bg = lines[3 + scr_lines * 2 + y][x]
                 ret.data[y][x] = Char(
@@ -144,6 +216,7 @@ class Screen:
                     fg=Color(int(char_fg, 16)),
                     bg=Color(int(char_bg, 16)),
                 )
+
         if 3 + scr_lines * 3 < len(lines) and lines[3 + scr_lines * 3] == "cursor:":
             # have cursor data
             cursor_line = lines[4 + scr_lines * 3]

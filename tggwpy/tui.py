@@ -6,6 +6,7 @@ import os
 import sys
 
 
+import wcwidth
 import pytermgui as ptg
 import pytermgui.context_managers as ptgctx
 
@@ -91,6 +92,7 @@ class TUI:
             ptg.terminal.write("\x1b[?25h", flush=True)
 
     def redraw(self) -> None:
+        self.screen.fix_wide_char()
         term_columns, term_lines = os.get_terminal_size()
         if self.last_term_lines != term_lines or self.last_term_columns != term_columns:
             self.need_full_redraw = True
@@ -113,6 +115,8 @@ class TUI:
                 if char == drawn_char:
                     continue
                 self.drawn_screen.data[y][x] = char
+                if char.text == "":
+                    continue
                 if x != cx or y != cy:
                     if x == 0:
                         if y == 0:
@@ -133,7 +137,7 @@ class TUI:
                     # term.on_{color}
                     refresh_str += f"\x1b[{colorbg[bg]}m"
                 refresh_str += char.text
-                cx += 1
+                cx += wcwidth.wcswidth(char.text)
         # position
         refresh_str += f"\x1b[m\x1b[{self.screen.cursor.y+1};{self.screen.cursor.x+1}H"
         # show cursor
