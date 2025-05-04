@@ -27,10 +27,12 @@ T = TypeVar("T", bound=plugin.Plugin)
 
 PDCURSE_MODE = True
 
-if sys.platform == "win32" or PDCURSE_MODE:
-    GAME = ["tggw\\tggw-pa7ched.exe"]
+if sys.platform == "win32":
+    GAME = ["tggw/tggw-pa7ched.exe"]
+elif PDCURSE_MODE:
+    GAME = ["wine", "tggw/tggw-pa7ched.exe"]
 else:
-    GAME = ["wine", "cmd", "/c", "..\\tggw-wine.cmd"]
+    GAME = ["wine", "cmd", "/c", "../tggw-wine.cmd"]
 REAL_LINES = 52
 LINES = 38
 COLUMNS = 92
