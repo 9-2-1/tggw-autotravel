@@ -1,3 +1,5 @@
+# Playable but not finished.
+
 The patched pdcurses.dll is from [pdcurses-fake](https://github.com/9-2-1/pdcurses-fake)
 
 ---
@@ -9,6 +11,10 @@ The patched pdcurses.dll is from [pdcurses-fake](https://github.com/9-2-1/pdcurs
 - [ ] Cross-level autotravel
 - [ ] Terrain mark
 - [ ] Translate
+
+- [ ] Key input escape sequence
+- [ ] Auto save/load
+- [ ] keypad
 
 ---
 
