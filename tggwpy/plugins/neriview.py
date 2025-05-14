@@ -285,14 +285,24 @@ class NeriLegend:
 
         lines: List[NeriLegendLine] = []
         for yi in range(y + 1, y + h - 1):
-            if pgup and yi == pgup_y:
-                continue
-            if pgdn and yi == pgdn_y:
-                continue
-            line = NeriLegendLine.parse_screen(scr, yi, x + 1, w - 2)
+            ww = w - 2
+            if (pgup and yi == pgup_y) or (pgdn and yi == pgdn_y):
+                ww = w - 6
+            line = NeriLegendLine.parse_screen(scr, yi, x + 1, ww)
             if line is not None:
                 lines.append(line)
         return NeriLegend(lines, pgup, pgdn)
+
+    def find_char(self, char: plugin.Char) -> Optional[NeriLegendLine]:
+        for line in self.legends:
+            if line.char == char:
+                return line
+        # blur search
+        for line in self.legends:
+            # Ignore bright color and bg color
+            if line.char.text == char.text and line.char.fg % 8 == char.fg % 8:
+                return line
+        return None
 
 
 @dataclass
