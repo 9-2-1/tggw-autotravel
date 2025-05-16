@@ -1,0 +1,23 @@
+# vim
+.*.sw[nmop]
+.*.un~
+
+# python
+__pycache__
+
+# mypy
+.mypy_cache/
+# pytest
+.pytest_cache/
+
+# the game
+tggw_game/
+
+# tauto db
+tauto.db
+
+# logging
+*.log
+
+# script
+*.cmd
