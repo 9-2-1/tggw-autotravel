@@ -2,6 +2,7 @@ from .base import TUIBase
 from ..screen import Screen, Color
 
 import colorama
+import pytermgui.win32console
 
 colorfg = {
     Color.BLACK: colorama.Fore.BLACK,
@@ -45,7 +46,9 @@ class TUIColorama(TUIBase):
     def __init__(self, lines: int = 24, columns: int = 80) -> None:
         self.screen = Screen(lines, columns)
         self.drawn_screen = Screen(lines, columns)
+        self.vpcontext = pytermgui.win32console.enable_virtual_processing()
         colorama.init()
+        self.vpcontext.__enter__()
 
     def refresh(self) -> None:
         """
@@ -70,4 +73,5 @@ class TUIColorama(TUIBase):
         self.drawn_screen.cursor = self.screen.cursor
 
     def close(self) -> None:
+        self.vpcontext.__exit__(None, None, None)
         colorama.deinit()

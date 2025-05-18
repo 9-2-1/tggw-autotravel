@@ -72,6 +72,7 @@ class RunWinPTY(RunBase):
                     color16(char.fg, default=Color.WHITE),
                     color16(char.bg, default=Color.BLACK),
                 )
+        self.pyte_screen.dirty.clear()
         self.screen.cursor = Cursor(
             self.pyte_screen.cursor.x,
             self.pyte_screen.cursor.y,

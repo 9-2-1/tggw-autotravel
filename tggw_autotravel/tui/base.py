@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from contextlib import contextmanager
 from typing import Generator
+
 from ..screen import Screen
 
 
