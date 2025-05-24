@@ -3,6 +3,7 @@ from ..screen import Screen, Color
 
 import colorama
 import pytermgui.win32console
+import os
 
 colorfg = {
     Color.BLACK: colorama.Fore.BLACK,
@@ -44,18 +45,26 @@ colorbg = {
 
 class TUIColorama(TUIBase):
     def __init__(self, lines: int = 24, columns: int = 80) -> None:
+        self.lines = lines
+        self.columns = columns
         self.screen = Screen(lines, columns)
-        self.drawn_screen = Screen(lines, columns)
-        self.vpcontext = pytermgui.win32console.enable_virtual_processing()
+        self.drawn_screen = Screen(lines, columns, empty=True)
+        self.scr_size = os.get_terminal_size()
+        self.alt_buffer_context = pytermgui.context_managers.alt_buffer()
         colorama.init()
-        self.vpcontext.__enter__()
+        self.alt_buffer_context.__enter__()
 
     def refresh(self) -> None:
         """
         refresh screen -> drawn_screen and output with colorama
         """
-        for y in range(self.screen.lines):
-            for x in range(self.screen.columns):
+        new_size = os.get_terminal_size()
+        if new_size != self.scr_size:
+            # reset drawnscreen
+            self.drawn_screen = Screen(self.lines, self.columns, empty=True)
+            self.scr_size = new_size
+        for y in range(min(self.screen.lines, self.drawn_screen.lines)):
+            for x in range(min(self.screen.columns, self.drawn_screen.columns)):
                 char = self.screen.buffer[y][x]
                 if self.drawn_screen.buffer[y][x] != char:
                     self.drawn_screen.buffer[y][x] = char
@@ -73,5 +82,5 @@ class TUIColorama(TUIBase):
         self.drawn_screen.cursor = self.screen.cursor
 
     def close(self) -> None:
-        self.vpcontext.__exit__(None, None, None)
+        self.alt_buffer_context.__exit__(None, None, None)
         colorama.deinit()

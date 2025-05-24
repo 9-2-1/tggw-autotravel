@@ -1,6 +1,7 @@
 import msvcrt
 import logging
 import time
+import pytermgui
 from typing import Optional
 
 from .base import GetchBase
@@ -9,10 +10,14 @@ log = logging.getLogger(__name__)
 
 
 class GetchMSVCRT(GetchBase):
-    def __init__(self, escape_timeout=0.1) -> None:
+    def __init__(self, escape_timeout: float = 0.1) -> None:
         self.buffer = ""
         self.escape_timeout = escape_timeout
         self.escape_start_time: Optional[float] = None
+        self.virtual_processing_context = (
+            pytermgui.win32console.enable_virtual_processing()
+        )
+        self.virtual_processing_context.__enter__()
 
     def getch(self) -> str:
         """
@@ -76,4 +81,4 @@ class GetchMSVCRT(GetchBase):
             self.buffer += read
 
     def close(self) -> None:
-        pass
+        self.virtual_processing_context.__exit__(None, None, None)

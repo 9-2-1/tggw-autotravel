@@ -79,11 +79,14 @@ class Char:
 
 
 class Screen:
-    def __init__(self, lines: int, columns: int) -> None:
+    def __init__(self, lines: int, columns: int, empty: bool = False) -> None:
         self.lines = lines
         self.columns = columns
         self.buffer = [
-            [Char(" ", Color.WHITE, Color.BLACK) for _ in range(columns)]
+            [
+                Char("" if empty else " ", Color.WHITE, Color.BLACK)
+                for _ in range(columns)
+            ]
             for _ in range(lines)
         ]
         self.cursor = Cursor(0, 0, 0)
