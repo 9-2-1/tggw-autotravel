@@ -2,7 +2,7 @@ import logging
 import time
 
 from .getch import GetchMSVCRT, getch_context
-from .run import RunWinPTY, run_context
+from .run import RunWinConsole, run_context
 from .tui import TUIColorama, tui_context
 
 log = logging.getLogger(__name__)
@@ -22,13 +22,13 @@ def main() -> None:
     with getch_context(GetchMSVCRT()) as getch:
         with tui_context(TUIColorama(lines=38, columns=92)) as tui:
             with run_context(
-                RunWinPTY(
+                RunWinConsole(
                     "cmd.exe",
                     "/c",
                     "The Ground Gives Way.exe",
                     lines=38,
                     columns=92,
-                    cwd="tggw_game",
+                    cwd="tggw_game",  # profile-directory
                 )
             ) as run:
                 while run.alive():
