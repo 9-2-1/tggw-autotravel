@@ -13,8 +13,8 @@ class RunBase(ABC):
         *args: str,
         cwd: Optional[str] = None,
         env: Optional[Dict[str, str]] = None,
-        lines: Optional[int] = None,
-        columns: Optional[int] = None,
+        lines: int = 24,
+        columns: int = 80,
     ) -> None: ...
 
     screen: Screen
