@@ -32,17 +32,16 @@ def main() -> None:
                 )
             ) as run:
                 while run.alive():
-                    char = getch.getch()
-                    if char != "":
+                    while True:
+                        char = getch.getch()
+                        if char == "":
+                            break
                         log.debug(f"char: {char!r}")
-                    if char == "q":
-                        log.info("q pressed")
-                        break
-                    elif char == "":
-                        time.sleep(CYCLE_TIME)
-                    else:
+                        # handle
+                        # with errorcatcher(log):
                         run.write(char)
                     run.read_screen()
                     tui.screen = run.screen
                     tui.refresh()
+                    time.sleep(CYCLE_TIME)
                 log.info("Not alive")
