@@ -6,12 +6,7 @@
 #include <time.h>
 #include <windows.h>
 
-#define eprintf(...) fprintf(stderr, __VA_ARGS__)
-#define eputs(s) fputs(s, stderr)
-#define pputs(s) fputs(s, stdout)
-
 #define MSG_SIZE 32768
-#define MAX_INPUT_EVENT 64
 char *default_cmdline = "cmd.exe";
 
 char *make_pipe_name()
@@ -37,58 +32,55 @@ void free_pipe_name(char *pipe_name)
 
 #pragma pack(push, 1)
 
-struct Query
+#define QUERY_SCREEN 1
+#define QUERY_WRITE 2
+#define QUERY_ALIVE 3
+#define QUERY_KILL 4
+#define QUERY_QUIT 0
+// uint8_t mode;
+
+struct QueryWrite
 {
-#define QUERY_STATE 0
-#define QUERY_INPUT 1
-#define QUERY_RESIZE 2
-#define QUERY_QUIT 3
-    uint8_t mode;
-    union QueryUnion {
-        struct QueryInput
-        {
-            uint16_t count;
-            INPUT_RECORD inputs[1]; // count
-        } input;
-        struct QueryResize
-        {
-            uint16_t lines;
-            uint16_t columns;
-        } resize;
-    } data;
+    uint16_t charCode;
+#define M_CTRL 0x01
+#define M_SHIFT 0x02
+#define M_ALT 0x04
+    uint8_t modifiers; // ctrl shift alt
 };
 
-struct Reply
-{
 #define REPLY_NONE 0
-#define REPLY_STATE 1
+#define REPLY_LOG 1
 #define REPLY_ERROR 2
-    uint8_t mode;
-    union ReplyUnion {
-        struct ReplyState
-        {
-            uint16_t lines;
-            uint16_t columns; //
-            uint16_t cursorX;
-            uint16_t cursorY;
-            uint16_t cursorSize; //
-            uint32_t inMode;
-            uint32_t outMode;
-            uint16_t outAttr;
-            uint8_t running;
-            uint32_t exitCode;
-            CHAR_INFO charinfo[1]; // lines * columns
-        } state;
-        char error[1];
-    } data;
+#define REPLY_SCREEN 3
+#define REPLY_ALIVE 4
+
+struct ReplyScreen
+{
+    uint16_t lines;
+    uint16_t columns; //
+    struct ReplyScreenCursor
+    {
+        uint16_t x;
+        uint16_t y;
+        uint8_t visibility;
+    } cursor;
+    struct ReplyScreenChar
+    {
+        uint16_t charCode;
+        uint8_t color;
+    } buffer[1]; // lines * columns
+};
+
+struct ReplyText // Log/Error
+{
+    uint16_t length;
+    char error[1];
 };
 
 #pragma pack(pop)
 
-void printHex(size_t size, char *buf)
+void printHex(const char *buf, size_t size)
 {
-    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-    DWORD dwBytesTransferred;
     const char hexland[16] = "0123456789abcdef";
     char *chdata = (char *)malloc(size * 2 + 1);
     memset(chdata, '+', size * 2 + 1);
@@ -98,33 +90,110 @@ void printHex(size_t size, char *buf)
         chdata[i * 2] = hexland[ch / 16];
         chdata[i * 2 + 1] = hexland[ch % 16];
     }
-    chdata[size * 2] = '\n';
-    if (!WriteFile(hStdout, chdata, size * 2 + 1, &dwBytesTransferred, NULL))
-    {
-        eprintf("WriteFile failed (%lu).\n", GetLastError());
-    }
-    // if (!FlushFileBuffers(hStdout))
-    // {
-    //     eprintf("FlushFileBuffers failed (%lu).\n", GetLastError());
-    // }
+    chdata[size * 2] = '\0';
+    puts(chdata);
     free(chdata);
 }
 
-int server(int arg_nostart, int arg_newconsole, int arg_inputmode)
+#define R_SUCCESS 0
+#define R_ERROR 1
+#define R_STOP 2
+int readPipe(HANDLE hPipe, char *replybuf, size_t *replysize)
+{
+    // Receive from process, and handle Error and Log
+    DWORD dwBytesTransferred;
+    OVERLAPPED ol;
+    memset(&ol, 0, sizeof(ol));
+    ol.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    BOOL ret = R_SUCCESS;
+    while (TRUE)
+    {
+        BOOL result = ReadFile(hPipe, replybuf, MSG_SIZE, &dwBytesTransferred, &ol);
+        // assume that the process will not terminate before pipe broken
+        // so just get it synchonously
+        if (!result)
+        {
+            DWORD lasterror = GetLastError();
+            if (lasterror == ERROR_IO_PENDING)
+            {
+                result = GetOverlappedResult(hPipe, &ol, &dwBytesTransferred, TRUE);
+            }
+        }
+
+        if (!result)
+        {
+            DWORD lasterror = GetLastError();
+            if (lasterror == ERROR_NO_DATA)
+            {
+                printf("L ReadFile No data.\n");
+            }
+            else if (lasterror == ERROR_BAD_PIPE)
+            {
+                printf("X ReadFile Bad pipe.\n");
+            }
+            else if (lasterror == ERROR_BROKEN_PIPE)
+            {
+                printf("X ReadFile Broken pipe.\n");
+            }
+            else
+            {
+                printf("X ReadFile failed (%lu).\n", lasterror);
+            }
+            ret = R_STOP;
+            break;
+        }
+
+        *replysize = dwBytesTransferred;
+        if (*replysize >= 1)
+        {
+            uint8_t mode = replybuf[0];
+            if (mode == REPLY_ERROR)
+            {
+                const struct ReplyText *replytext = (struct ReplyText *)&replybuf[1];
+                printf("X %.*s\n", replytext->length, replytext->error);
+                fflush(stdout);
+                ret = R_ERROR;
+                break;
+            }
+            else if (mode == REPLY_LOG)
+            {
+                const struct ReplyText *replytext = (struct ReplyText *)&replybuf[1];
+                printf("L %.*s\n", replytext->length, replytext->error);
+                fflush(stdout);
+                // continue the loop to read real result
+            }
+            else
+            {
+                printHex(replybuf, *replysize);
+                fflush(stdout);
+                break;
+            }
+        }
+    }
+
+    CloseHandle(ol.hEvent);
+    return ret;
+}
+
+int server(int arg_nostart, int arg_newconsole)
 {
     DWORD dwBytesTransferred;
-    // server
     char *pipename = make_pipe_name();
     DWORD openmode = PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_OVERLAPPED;
 #ifndef PIPE_REJECT_REMOTE_CLIENTS
 #define PIPE_REJECT_REMOTE_CLIENTS 0x00000008
 #endif
-    DWORD pipemode = PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT; // | PIPE_REJECT_REMOTE_CLIENTS;
+    DWORD pipemode = PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT;
+    if (!arg_nostart)
+    {
+        // Unshare the pipe with other processes.
+        pipemode |= PIPE_REJECT_REMOTE_CLIENTS;
+    }
 
     HANDLE hPipe = CreateNamedPipeA(pipename, openmode, pipemode, 1, 65536, 65536, 0, NULL);
     if (hPipe == INVALID_HANDLE_VALUE)
     {
-        eprintf("CreateNamedPipe failed (%lu).\n", GetLastError());
+        printf("X CreateNamedPipe failed (%lu).\n", GetLastError());
         free_pipe_name(pipename);
         return 1;
     }
@@ -132,8 +201,8 @@ int server(int arg_nostart, int arg_newconsole, int arg_inputmode)
 
     if (arg_nostart == 1)
     {
-        printf("%s\n", pipename);
-        hProcessWait = CreateEventA(NULL, TRUE, FALSE, NULL);
+        printf("L %s\n", pipename);
+        hProcessWait = CreateEventA(NULL, TRUE, FALSE, NULL); // Dummy event
     }
     else
     {
@@ -141,16 +210,17 @@ int server(int arg_nostart, int arg_newconsole, int arg_inputmode)
         GetModuleFileNameA(NULL, progname, MSG_SIZE);
 
         char *cmdline = (char *)malloc(MSG_SIZE);
+        // copy args
         snprintf(cmdline, MSG_SIZE, "%s -p \"%s\"", GetCommandLineA(), pipename);
 
         STARTUPINFO si;
         PROCESS_INFORMATION pi;
         ZeroMemory(&si, sizeof(si));
         si.cb = sizeof(si);
-        DWORD dwFlags = arg_newconsole == 2 ? 0 : arg_newconsole == 1 ? CREATE_NEW_CONSOLE : CREATE_NO_WINDOW;
+        DWORD dwFlags = arg_newconsole == 1 ? CREATE_NEW_CONSOLE : CREATE_NO_WINDOW;
         if (!CreateProcessA(progname, cmdline, NULL, NULL, FALSE, dwFlags, NULL, NULL, &si, &pi))
         {
-            eprintf("CreateProcess failed (%lu).\n", GetLastError());
+            printf("X CreateProcess failed (%lu).\n", GetLastError());
             free(cmdline);
             return 1;
         }
@@ -170,7 +240,7 @@ int server(int arg_nostart, int arg_newconsole, int arg_inputmode)
     ZeroMemory(&ol, sizeof(ol));
     ol.hEvent = hPipeEvent;
 
-    BOOL result = ConnectNamedPipe(hPipe, &ol);
+    int result = ConnectNamedPipe(hPipe, &ol);
     if (!result)
     {
         DWORD lasterror = GetLastError();
@@ -179,7 +249,7 @@ int server(int arg_nostart, int arg_newconsole, int arg_inputmode)
             DWORD result2 = WaitForMultipleObjects(2, hWaits, FALSE, INFINITE);
             if (result2 == WAIT_OBJECT_0)
             {
-                eprintf("Process terminated.\n");
+                printf("L Process terminated.\n");
                 CancelIo(hPipe);
                 SetEvent(hPipeEvent);
                 goto end;
@@ -190,7 +260,7 @@ int server(int arg_nostart, int arg_newconsole, int arg_inputmode)
             }
             else
             {
-                eprintf("Internal Error.\n");
+                printf("X Internal Error.\n");
                 goto end;
             }
         }
@@ -201,137 +271,86 @@ int server(int arg_nostart, int arg_newconsole, int arg_inputmode)
         DWORD lasterror = GetLastError();
         if (lasterror == ERROR_PIPE_CONNECTED)
         {
-            eprintf("Pipe has been connected.\n");
+            printf("L Pipe has been connected.\n");
             // no error
         }
         else
         {
-            eprintf("ConnectNamedPipe failed (%lu).\n", lasterror);
+            printf("X ConnectNamedPipe failed (%lu).\n", lasterror);
             goto end;
         }
     }
     else
     {
-        eprintf("Pipe has been connected.\n");
+        printf("L Pipe has been connected.\n");
     }
 
     char *replybuf = (char *)malloc(MSG_SIZE);
     size_t replysize;
-
-    HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
-    HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-
-    DWORD dwOldMode = 0;
-    GetConsoleMode(hStdin, &dwOldMode);
-
     char *inputbuf = (char *)malloc(MSG_SIZE);
     int stopped = 0;
+
+    // Read Run Reply
+    result = readPipe(hPipe, replybuf, &replysize);
+    if (result == R_ERROR || result == R_STOP)
+    {
+        stopped = 1;
+    }
     while (stopped == 0)
     {
         char *querybuf = NULL;
         size_t querysize = 0;
-        if (arg_inputmode == 0)
-        {
-            DWORD inputlen = 0;
-            if (!ReadFile(hStdin, inputbuf, MSG_SIZE, &inputlen, NULL))
-            {
-                eprintf("ReadConsoleA failed. (%lu)\n", GetLastError());
-                break;
-            }
-            querybuf = malloc(inputlen / 2);
-            querysize = 0;
+        DWORD inputlen = 0;
+        scanf(" %32767[^\r\n]", inputbuf);
+        inputlen = strlen(inputbuf);
+        querybuf = malloc(inputlen / 2);
+        querysize = 0;
 
-            int firstdight = -1;
-            for (int i = 0; i < inputlen; i++)
-            {
-                char ch = inputbuf[i];
-                int v = -1;
-                if (ch >= '0' && ch <= '9')
-                {
-                    v = ch - '0';
-                }
-                else if (ch >= 'a' && ch <= 'f')
-                {
-                    v = ch - 'a' + 10;
-                }
-                else if (ch >= 'A' && ch <= 'F')
-                {
-                    v = ch - 'A' + 10;
-                }
-                else
-                {
-                    continue;
-                }
-                if (firstdight == -1)
-                {
-                    firstdight = v;
-                }
-                else
-                {
-                    firstdight = firstdight * 16 + v;
-                    querybuf[querysize] = firstdight;
-                    querysize++;
-                    firstdight = -1;
-                }
-            }
-        }
-        else
+        int firstdight = -1;
+        for (int i = 0; i < inputlen; i++)
         {
-            DWORD dwEventCount = 0;
-            if (!GetNumberOfConsoleInputEvents(hStdin, &dwEventCount))
+            char ch = inputbuf[i];
+            int v = -1;
+            if (ch >= '0' && ch <= '9')
             {
-                eprintf("GetNumberOfConsoleInputEvents failed (%lu).\n", GetLastError());
+                v = ch - '0';
             }
-            if (dwEventCount == 0)
+            else if (ch >= 'a' && ch <= 'f')
             {
-                querysize = sizeof(uint8_t);
-                querybuf = (char *)malloc(querysize);
-                struct Query *query = (struct Query *)querybuf;
-                query->mode = QUERY_STATE;
-                Sleep(10);
+                v = ch - 'a' + 10;
+            }
+            else if (ch >= 'A' && ch <= 'F')
+            {
+                v = ch - 'A' + 10;
             }
             else
             {
-                DWORD dwRead;
-                querysize = sizeof(uint8_t) + sizeof(struct QueryInput) + sizeof(INPUT_RECORD) * (dwEventCount - 1);
-                querybuf = (char *)malloc(querysize);
-                struct Query *query = (struct Query *)querybuf;
-                query->mode = QUERY_INPUT;
-                CONSOLE_SCREEN_BUFFER_INFO csbi;
-                if (!GetConsoleScreenBufferInfo(hStdout, &csbi))
-                {
-                    eprintf("GetConsoleScreenBufferInfo failed (%lu).\n", GetLastError());
-                    ZeroMemory(&csbi, sizeof(csbi));
-                }
-                if (!ReadConsoleInputW(hStdin, query->data.input.inputs, dwEventCount, &dwRead))
-                {
-                    eprintf("ReadConsoleInput failed (%lu).\n", GetLastError());
-                }
-                query->data.input.count = dwRead;
-                querysize = sizeof(uint8_t) + sizeof(struct QueryInput) + sizeof(INPUT_RECORD) * (dwRead - 1);
-                for (int i = 0; i < dwRead; i++)
-                {
-                    INPUT_RECORD *ir = &query->data.input.inputs[i];
-                    if (ir->EventType == MOUSE_EVENT)
-                    {
-                        ir->Event.MouseEvent.dwMousePosition.X -= csbi.srWindow.Left;
-                        ir->Event.MouseEvent.dwMousePosition.Y -= csbi.srWindow.Top;
-                    }
-                }
-                printHex(querysize, querybuf);
+                continue;
+            }
+            if (firstdight == -1)
+            {
+                firstdight = v;
+            }
+            else
+            {
+                firstdight = firstdight * 16 + v;
+                querybuf[querysize] = firstdight;
+                querysize++;
+                firstdight = -1;
             }
         }
 
         // Special treat exit
         if (querysize >= sizeof(uint8_t))
         {
-            if (((struct Query *)querybuf)->mode == QUERY_QUIT)
+            if (querybuf[0] == QUERY_QUIT)
             {
                 stopped = 1;
             }
         }
 
-        result = TransactNamedPipe(hPipe, querybuf, querysize, replybuf, MSG_SIZE, &dwBytesTransferred, &ol);
+        // Send to process
+        result = WriteFile(hPipe, querybuf, querysize, &dwBytesTransferred, &ol);
         // assume that the process will not terminate before pipe broken
         // so just get it synchonously
         if (!result)
@@ -348,55 +367,30 @@ int server(int arg_nostart, int arg_newconsole, int arg_inputmode)
         if (!result)
         {
             DWORD lasterror = GetLastError();
-            if (lasterror == ERROR_NO_DATA)
+            if (lasterror == ERROR_BAD_PIPE)
             {
-                eprintf("No data.\n");
-                break;
-            }
-            else if (lasterror == ERROR_BAD_PIPE)
-            {
-                eprintf("Bad pipe.\n");
+                printf("X WriteFile Bad pipe.\n");
                 break;
             }
             else if (lasterror == ERROR_BROKEN_PIPE)
             {
-                eprintf("Broken pipe.\n");
+                printf("X WriteFile Broken pipe.\n");
                 break;
             }
-            eprintf("TransactNamedPipe failed (%lu).\n", lasterror);
+            printf("X WriteFile failed (%lu).\n", lasterror);
             break;
         }
 
-        replysize = dwBytesTransferred;
-        if (arg_inputmode == 1)
+        result = readPipe(hPipe, replybuf, &replysize);
+        if (result == R_STOP)
         {
-            struct Reply *reply = (struct Reply *)replybuf;
-            if (replysize > sizeof(uint8_t))
-            {
-                if (reply->mode == REPLY_ERROR)
-                {
-                    eprintf("Error: %s\n", reply->data.error);
-                }
-                else if (reply->mode == REPLY_STATE)
-                {
-                    struct ReplyState *state = &reply->data.state;
-                    if (replysize >= sizeof(uint8_t) + sizeof(struct ReplyState))
-                    {
-                        SetConsoleMode(hStdin, state->inMode);
-                    }
-                }
-            }
-        }
-        else
-        {
-            printHex(replysize, replybuf);
+            break;
         }
     }
 
-end:
-    SetConsoleMode(hStdin, dwOldMode);
     free(inputbuf);
     free(replybuf);
+end:
     CloseHandle(hPipeEvent);
     FlushFileBuffers(hPipe);
     CloseHandle(hPipe);
@@ -406,13 +400,46 @@ end:
     {
         WaitForSingleObject(hProcessWait, INFINITE);
         GetExitCodeProcess(hProcessWait, &exitcode);
-        eprintf("Client exitcode: %lu\n", exitcode);
+        printf("L Client exitcode: %lu\n", exitcode);
     }
     CloseHandle(hProcessWait);
     return exitcode;
 }
 
-BOOL conResize(HANDLE hStdout, int arg_columns, int arg_lines)
+// Client
+
+BOOL replyText(HANDLE hPipe, uint8_t mode, const char *format, va_list args)
+{
+    DWORD dwBytesTransferred;
+    char *replybuf = (char *)malloc(MSG_SIZE);
+    size_t replysize;
+    replybuf[0] = mode;
+    struct ReplyText *replytext = (struct ReplyText *)&replybuf[1];
+    size_t errlen = vsnprintf(replytext->error, MSG_SIZE - 1 - (sizeof(struct ReplyText) - 1), format, args);
+    replytext->length = errlen;
+    replysize = 1 + sizeof(struct ReplyText) + errlen - 1;
+    BOOL result = WriteFile(hPipe, replybuf, replysize, &dwBytesTransferred, NULL) != 0;
+    free(replybuf);
+    return result;
+}
+
+BOOL replyLog(HANDLE hPipe, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    va_end(args);
+    return replyText(hPipe, REPLY_LOG, format, args);
+}
+
+BOOL replyError(HANDLE hPipe, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    va_end(args);
+    return replyText(hPipe, REPLY_ERROR, format, args);
+}
+
+BOOL conResize(HANDLE hStdout, int arg_columns, int arg_lines, HANDLE hPipe)
 {
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     GetConsoleScreenBufferInfo(hStdout, &csbi);
@@ -427,19 +454,19 @@ BOOL conResize(HANDLE hStdout, int arg_columns, int arg_lines)
     result = SetConsoleScreenBufferSize(hStdout, large_buf_size);
     if (!result)
     {
-        eprintf("SetConsoleScreenBufferSize failed (%lu).\n", GetLastError());
+        replyLog(hPipe, "SetConsoleScreenBufferSize failed (%lu).", GetLastError());
         return FALSE;
     }
     result = SetConsoleWindowInfo(hStdout, TRUE, &new_win_rect);
     if (!result)
     {
-        eprintf("SetConsoleWindowInfo failed (%lu).\n", GetLastError());
+        replyLog(hPipe, "SetConsoleWindowInfo failed (%lu).", GetLastError());
         return FALSE;
     }
     result = SetConsoleScreenBufferSize(hStdout, new_buf_size);
     if (!result)
     {
-        eprintf("SetConsoleScreenBufferSize failed (%lu).\n", GetLastError());
+        replyLog(hPipe, "SetConsoleScreenBufferSize failed (%lu).", GetLastError());
         return FALSE;
     }
     return TRUE;
@@ -459,20 +486,27 @@ BOOL WINAPI nobreak(DWORD dwCtrlType)
 
 int client(const char *arg_pipename, const char *arg_cmdline, int arg_columns, int arg_lines)
 {
-
+    int ret = 0;
     HANDLE hPipe = CreateFileA(arg_pipename, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (hPipe == INVALID_HANDLE_VALUE)
     {
-        eprintf("CreateFile failed (%lu).\n", GetLastError());
+        printf("X CreateFile failed (%lu).\n", GetLastError());
         return 1;
     }
 
-    DWORD state = PIPE_READMODE_MESSAGE | PIPE_WAIT;
-    SetNamedPipeHandleState(hPipe, &state, NULL, NULL);
+    DWORD pipeState = PIPE_READMODE_MESSAGE | PIPE_WAIT;
+    SetNamedPipeHandleState(hPipe, &pipeState, NULL, NULL);
 
     HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
     HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-    conResize(hStdout, arg_columns, arg_lines);
+    conResize(hStdout, arg_columns, arg_lines, hPipe);
+
+    char *querybuf = (char *)malloc(MSG_SIZE);
+    size_t querysize;
+    char *replybuf = NULL;
+    size_t replysize = 0;
+    int stopsign = 0;
+    DWORD dwBytesTransferred;
 
     char *cmdline = (char *)malloc(strlen(arg_cmdline) + 1);
     STARTUPINFO si;
@@ -483,188 +517,215 @@ int client(const char *arg_pipename, const char *arg_cmdline, int arg_columns, i
     strcpy(cmdline, arg_cmdline);
     if (!CreateProcessA(NULL, cmdline, NULL, NULL, FALSE, dwFlags, NULL, NULL, &si, &pi))
     {
-        eprintf("CreateProcess failed (%lu).\n", GetLastError());
-        puts(cmdline);
+        replyError(hPipe, "CreateProcess failed (%lu).", GetLastError());
         free(cmdline);
-        return 2;
+        ret = 2;
+        goto end;
     }
     free(cmdline);
 
     SetConsoleCtrlHandler(nobreak, TRUE);
 
-    struct Query *querybuf = (struct Query *)malloc(MSG_SIZE);
-    size_t querysize;
-    struct Reply *replybuf = NULL;
-    size_t replysize = 0;
-    const char *errorstr = NULL;
-    int stopsign = 0;
+    // Started successfully
+    replysize = 1;
+    replybuf = (char *)malloc(replysize);
+    replybuf[0] = REPLY_NONE;
+    if (WriteFile(hPipe, replybuf, replysize, &dwBytesTransferred, NULL) == 0)
+    {
+        // TODO rename format->reply
+        replyError(hPipe, "WriteFile failed (%lu).", GetLastError());
+        ret = 3;
+        stopsign = 1;
+    }
+    free(replybuf);
+    replybuf = NULL;
+
     while (stopsign == 0)
     {
-        DWORD dwBytesTransferred;
         BOOL result = ReadFile(hPipe, querybuf, MSG_SIZE, &dwBytesTransferred, NULL);
         if (!result)
         {
-            eprintf("ReadFile failed (%lu).\n", GetLastError());
             break;
         }
-        else
+        querysize = dwBytesTransferred;
+        if (querysize < 1)
         {
-            querysize = dwBytesTransferred;
-            if (querysize < sizeof(uint8_t))
+            replyError(hPipe, "query size too small");
+            goto next;
+        }
+        switch (querybuf[0])
+        {
+        case QUERY_SCREEN: {
+            if (querysize != 1)
             {
-                errorstr = "query size too small";
-                goto error;
+                replyError(hPipe, "Incorrect query size");
+                goto next;
             }
-            if (querybuf->mode == QUERY_INPUT)
+            CONSOLE_SCREEN_BUFFER_INFO csbi;
+            if (!GetConsoleScreenBufferInfo(hStdout, &csbi))
             {
-                if (querysize < sizeof(uint8_t) + sizeof(struct QueryInput))
-                {
-                    errorstr = "query size too small";
-                    goto error;
-                }
-                INPUT_RECORD *inputs = querybuf->data.input.inputs;
-                DWORD eventcnts = querybuf->data.input.count;
-                if (querysize != sizeof(uint8_t) + sizeof(struct QueryInput) + sizeof(INPUT_RECORD) * (eventcnts - 1))
-                {
-                    errorstr = "Incorrect query size";
-                    goto error;
-                }
-                CONSOLE_SCREEN_BUFFER_INFO csbi;
-                if (!GetConsoleScreenBufferInfo(hStdout, &csbi))
-                {
-                    eprintf("GetConsoleScreenBufferInfo failed (%lu).\n", GetLastError());
-                    ZeroMemory(&csbi, sizeof(csbi));
-                }
-                for (int i = 0; i < eventcnts; i++)
-                {
-                    INPUT_RECORD *ir = &inputs[i];
-                    if (ir->EventType == MOUSE_EVENT)
-                    {
-                        ir->Event.MouseEvent.dwMousePosition.X += csbi.srWindow.Left;
-                        ir->Event.MouseEvent.dwMousePosition.Y += csbi.srWindow.Top;
-                    }
-                }
-                DWORD eventWritten;
-                result = WriteConsoleInputW(hStdin, inputs, eventcnts, &eventWritten);
-                if (!result)
-                {
-                    eprintf("WriteConsoleInputW failed (%lu).\n", GetLastError());
-                }
-                replysize = sizeof(uint8_t);
-                replybuf = (struct Reply *)malloc(replysize);
-                replybuf->mode = REPLY_NONE;
+                replyLog(hPipe, "GetConsoleScreenBufferInfo failed (%lu).", GetLastError());
+                ZeroMemory(&csbi, sizeof(csbi));
             }
-            else if (querybuf->mode == QUERY_RESIZE)
+            COORD scr_begin = {0, 0};
+            CONSOLE_CURSOR_INFO cci;
+            if (!GetConsoleCursorInfo(hStdout, &cci))
             {
-                if (querysize != sizeof(uint8_t) + sizeof(struct QueryResize))
-                {
-                    errorstr = "Incorrect query size";
-                    goto error;
-                }
-                int columns = querybuf->data.resize.columns;
-                int lines = querybuf->data.resize.lines;
-                conResize(hStdout, columns, lines);
-                replysize = sizeof(uint8_t);
-                replybuf = (struct Reply *)malloc(replysize);
-                replybuf->mode = REPLY_NONE;
+                replyLog(hPipe, "GetConsoleCursorInfo failed (%lu).", GetLastError());
+                ZeroMemory(&cci, sizeof(cci));
             }
-            else if (querybuf->mode == QUERY_QUIT)
+            COORD scr_size = {csbi.srWindow.Right - csbi.srWindow.Left + 1,
+                              csbi.srWindow.Bottom - csbi.srWindow.Top + 1};
+            replysize = 1 + sizeof(struct ReplyScreen) + sizeof(struct ReplyScreenChar) * (scr_size.X * scr_size.Y - 1);
+            replybuf = malloc(replysize);
+            replybuf[0] = REPLY_SCREEN;
+            struct ReplyScreen *state = (struct ReplyScreen *)&replybuf[1];
+            state->lines = scr_size.Y;
+            state->columns = scr_size.X;
+            state->cursor.x = csbi.dwCursorPosition.X - csbi.srWindow.Left;
+            state->cursor.y = csbi.dwCursorPosition.Y - csbi.srWindow.Top;
+            state->cursor.visibility = cci.bVisible ? 1 : 0;
+            CHAR_INFO *charinfo = (CHAR_INFO *)malloc(sizeof(CHAR_INFO) * scr_size.X * scr_size.Y);
+            if (!ReadConsoleOutputW(hStdout, charinfo, scr_size, scr_begin, &csbi.srWindow))
             {
-                stopsign = 1;
-                replysize = sizeof(uint8_t);
-                replybuf = (struct Reply *)malloc(replysize);
-                replybuf->mode = REPLY_NONE;
+                replyError(hPipe, "ReadConsoleOutputW failed (%lu).", GetLastError());
+                goto next;
             }
-            else if (querybuf->mode == QUERY_STATE)
+            for (int y = 0; y < scr_size.Y; y++)
             {
-                if (querysize != sizeof(uint8_t))
+                for (int x = 0; x < scr_size.X; x++)
                 {
-                    errorstr = "Incorrect query size";
-                    goto error;
+                    CHAR_INFO *ci = &charinfo[y * scr_size.X + x];
+                    struct ReplyScreenChar *rc = &state->buffer[y * scr_size.X + x];
+                    rc->charCode = ci->Char.UnicodeChar;
+                    rc->color = ci->Attributes & 0xff;
                 }
-                CONSOLE_SCREEN_BUFFER_INFO csbi;
-                if (!GetConsoleScreenBufferInfo(hStdout, &csbi))
-                {
-                    eprintf("GetConsoleScreenBufferInfo failed (%lu).\n", GetLastError());
-                    ZeroMemory(&csbi, sizeof(csbi));
-                }
-                COORD scr_begin = {0, 0};
-                DWORD dwInMode;
-                if (!GetConsoleMode(hStdin, &dwInMode))
-                {
-                    eprintf("GetConsoleMode failed (%lu).\n", GetLastError());
-                    dwInMode = 0;
-                }
-                DWORD dwOutMode;
-                if (!GetConsoleMode(hStdout, &dwOutMode))
-                {
-                    eprintf("GetConsoleMode failed (%lu).\n", GetLastError());
-                    dwOutMode = 0;
-                }
-                CONSOLE_CURSOR_INFO cci;
-                if (!GetConsoleCursorInfo(hStdout, &cci))
-                {
-                    eprintf("GetConsoleCursorInfo failed (%lu).\n", GetLastError());
-                    ZeroMemory(&cci, sizeof(cci));
-                }
-                COORD scr_size = {csbi.srWindow.Right - csbi.srWindow.Left + 1,
-                                  csbi.srWindow.Bottom - csbi.srWindow.Top + 1};
-                replysize = sizeof(struct Reply) + (scr_size.X * scr_size.Y - 1) * sizeof(CHAR_INFO);
-                replybuf = (struct Reply *)malloc(replysize);
-                replybuf->mode = REPLY_STATE;
-                struct ReplyState *state = &replybuf->data.state;
-                state->lines = scr_size.Y;
-                state->columns = scr_size.X;
-                state->cursorX = csbi.dwCursorPosition.X - csbi.srWindow.Left;
-                state->cursorY = csbi.dwCursorPosition.Y - csbi.srWindow.Top;
-                state->inMode = dwInMode;
-                state->outMode = dwOutMode;
-                state->outAttr = csbi.wAttributes;
-                state->cursorSize = cci.bVisible ? 0 : cci.dwSize;
-                state->running = 0;
-                state->exitCode = -1;
-                if (WaitForSingleObject(pi.hProcess, 0) != WAIT_OBJECT_0)
-                {
-                    state->running = 1;
-                }
-                else
-                {
-                    DWORD dwExitCode;
-                    if (GetExitCodeProcess(pi.hProcess, &dwExitCode) == 0)
-                    {
-                        eprintf("GetExitCodeProcess failed (%lu).\n", GetLastError());
-                    }
-                    state->exitCode = dwExitCode;
-                }
-                SMALL_RECT full_rect = {0, 0, csbi.dwSize.X - 1, csbi.dwSize.Y - 1};
-                if (!ReadConsoleOutputW(hStdout, state->charinfo, scr_size, scr_begin, &csbi.srWindow))
-                {
-                    eprintf("ReadConsoleOutputW failed (%lu).\n", GetLastError());
-                }
+            }
+        }
+        break;
+        case QUERY_WRITE: {
+            if (querysize != 1 + sizeof(struct QueryWrite))
+            {
+                replyError(hPipe, "Incorrect query size");
+                goto next;
+            }
+            const struct QueryWrite *qw = (struct QueryWrite *)&querybuf[1];
+            // RIGHT_ALT_PRESSED 0x0001	按下右 ALT 键。
+            // LEFT_ALT_PRESSED 0x0002	按下左 ALT 键。
+            // RIGHT_CTRL_PRESSED 0x0004	按下右 CTRL 键。
+            // LEFT_CTRL_PRESSED 0x0008	按下左 CTRL 键。
+            // SHIFT_PRESSED 0x0010 按下 SHIFT 键。
+            // NUMLOCK_ON 0x0020	NUM LOCK 指示灯亮起。
+            // SCROLLLOCK_ON 0x0040	SCROLL LOCK 指示灯亮起。
+            // CAPSLOCK_ON 0x0080	CAPS LOCK 指示灯亮起。
+            // ENHANCED_KEY 0x0100	按键已增强。 请参阅注解。
+            DWORD dwControlKeyState = 0;
+            if (qw->modifiers & M_CTRL)
+            {
+                dwControlKeyState |= LEFT_CTRL_PRESSED;
+            }
+            if (qw->modifiers & M_SHIFT)
+            {
+                dwControlKeyState |= SHIFT_PRESSED;
+            }
+            if (qw->modifiers & M_ALT)
+            {
+                dwControlKeyState |= LEFT_ALT_PRESSED;
+            }
+
+            INPUT_RECORD inputs[2];
+            DWORD eventWritten;
+            ZeroMemory(inputs, sizeof(inputs) * 2);
+            inputs[0].EventType = KEY_EVENT;
+            inputs[0].Event.KeyEvent.bKeyDown = TRUE;
+            inputs[0].Event.KeyEvent.wRepeatCount = 1;
+            inputs[0].Event.KeyEvent.uChar.UnicodeChar = qw->charCode;
+            inputs[0].Event.KeyEvent.wVirtualKeyCode = 0;
+            inputs[0].Event.KeyEvent.wVirtualScanCode = 0;
+            inputs[0].Event.KeyEvent.dwControlKeyState = dwControlKeyState;
+            inputs[1].EventType = KEY_EVENT;
+            inputs[1].Event.KeyEvent.bKeyDown = FALSE;
+            inputs[1].Event.KeyEvent.wRepeatCount = 1;
+            inputs[1].Event.KeyEvent.uChar.UnicodeChar = qw->charCode;
+            inputs[1].Event.KeyEvent.wVirtualKeyCode = 0;
+            inputs[1].Event.KeyEvent.wVirtualScanCode = 0;
+            inputs[1].Event.KeyEvent.dwControlKeyState = dwControlKeyState;
+            result = WriteConsoleInputW(hStdin, inputs, 2, &eventWritten);
+            if (!result)
+            {
+                replyError(hPipe, "WriteConsoleInputW failed (%lu).", GetLastError());
+                goto next;
+            }
+            replysize = sizeof(uint8_t);
+            replybuf = (char *)malloc(replysize);
+            replybuf[0] = REPLY_NONE;
+        }
+        break;
+        case QUERY_ALIVE: {
+            if (querysize != 1)
+            {
+                replyError(hPipe, "Incorrect query size");
+                goto next;
+            }
+            replysize = 2;
+            replybuf = (char *)malloc(replysize);
+            replybuf[0] = REPLY_ALIVE;
+            result = WaitForSingleObject(pi.hProcess, 0);
+            if (result == WAIT_OBJECT_0)
+            {
+                replybuf[1] = 0;
+            }
+            else if (result == WAIT_TIMEOUT)
+            {
+                replybuf[1] = 1;
             }
             else
             {
-                errorstr = "Unknown query mode";
+                replyError(hPipe, "WaitForSingleObject failed (%lu).", GetLastError());
+                goto next;
             }
-        error:
-            if (errorstr != NULL)
+        }
+        break;
+        case QUERY_KILL: {
+            if (querysize != 1)
             {
-                if (replybuf != NULL)
-                {
-                    free(replybuf);
-                }
-
-                replysize = sizeof(uint8_t) + strlen(errorstr) + 1;
-                replybuf = (struct Reply *)malloc(replysize);
-                replybuf->mode = REPLY_ERROR;
-                strcpy((char *)replybuf->data.error, errorstr);
-                errorstr = NULL;
+                replyError(hPipe, "Incorrect query size");
+                goto next;
             }
-            if (WriteFile(hPipe, replybuf, replysize, &dwBytesTransferred, NULL) == 0)
+            if (!TerminateProcess(pi.hProcess, 0))
             {
-                eprintf("WriteFile failed (%lu).\n", GetLastError());
-                break;
+                replyError(hPipe, "TerminateProcess failed (%lu).", GetLastError());
+                goto next;
             }
+            replysize = 1;
+            replybuf = (char *)malloc(replysize);
+            replybuf[0] = REPLY_NONE;
+        }
+        break;
+        case QUERY_QUIT: {
+            if (querysize != 1)
+            {
+                replyError(hPipe, "Incorrect query size");
+                goto next;
+            }
+            stopsign = 1;
+            replysize = 1;
+            replybuf = (char *)malloc(replysize);
+            replybuf[0] = REPLY_NONE;
+        }
+        break;
+        default: {
+            replyError(hPipe, "Wrong query mode %d", querybuf[0]);
+            goto next;
+        }
+        }
+        if (WriteFile(hPipe, replybuf, replysize, &dwBytesTransferred, NULL) == 0)
+        {
+            break;
+        }
+    next:
+        if (replybuf != NULL)
+        {
             free(replybuf);
             replybuf = NULL;
         }
@@ -673,13 +734,14 @@ int client(const char *arg_pipename, const char *arg_cmdline, int arg_columns, i
     {
         TerminateProcess(pi.hProcess, 0x127);
     }
-    SetConsoleCtrlHandler(nobreak, FALSE);
-    free(querybuf);
-    FlushFileBuffers(hPipe);
-    CloseHandle(hPipe);
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
-    return 0;
+    SetConsoleCtrlHandler(nobreak, FALSE);
+    free(querybuf);
+end:
+    FlushFileBuffers(hPipe);
+    CloseHandle(hPipe);
+    return ret;
 }
 
 const char *HELP_STR = "\
@@ -691,8 +753,7 @@ Options:\n\
   -L <lines>  Console lines (default: 24)\n\
   -C <cols>   Console columns (default: 80)\n\
   -n          Show new console for subprocess\n\
-  -N          Print pipe name and wait (no auto-start)\n\
-  -i          Direct input and show input data (for debugging only, with -n)\n\
+  -P          Print pipe name and wait (no auto-start)\
 ";
 
 int main(int argc, char *argv[])
@@ -705,21 +766,18 @@ int main(int argc, char *argv[])
     int arg_lines = 24;
     int arg_nostart = 0;
     int arg_newconsole = 0;
-    int arg_inputmode = 0;
-
-    eprintf("cmdline: %s\n", GetCommandLineA());
     for (int i = 1; i < argc; i++)
     {
         if (strcmp(argv[i], "-h") == 0)
         {
-            pputs(HELP_STR);
+            puts(HELP_STR);
             return 0;
         }
         else if (strcmp(argv[i], "-c") == 0)
         {
             if (i + 1 >= argc)
             {
-                eputs("Missing argument for -c option\n");
+                printf("X Missing argument for -c option\n");
                 return 1;
             }
             arg_cmdline = argv[++i];
@@ -728,7 +786,7 @@ int main(int argc, char *argv[])
         {
             if (i + 1 >= argc)
             {
-                eputs("Missing argument for -p option\n");
+                printf("X Missing argument for -p option\n");
                 return 1;
             }
             arg_pipename = argv[++i];
@@ -737,13 +795,13 @@ int main(int argc, char *argv[])
         {
             if (i + 1 >= argc)
             {
-                eputs("Missing argument for -L option\n");
+                printf("Missing argument for -L option\n");
                 return 1;
             }
             arg_lines = atoi(argv[++i]);
             if (arg_lines <= 0)
             {
-                eputs("Invalid value for -L option\n");
+                printf("Invalid value for -L option\n");
                 return 1;
             }
         }
@@ -751,13 +809,13 @@ int main(int argc, char *argv[])
         {
             if (i + 1 >= argc)
             {
-                eputs("Missing argument for -C option\n");
+                printf("Missing argument for -C option\n");
                 return 1;
             }
             arg_columns = atoi(argv[++i]);
             if (arg_columns <= 0)
             {
-                eputs("Invalid value for -C option\n");
+                printf("Invalid value for -C option\n");
                 return 1;
             }
         }
@@ -765,21 +823,13 @@ int main(int argc, char *argv[])
         {
             arg_newconsole = 1;
         }
-        else if (strcmp(argv[i], "-s") == 0)
-        {
-            arg_newconsole = 2;
-        }
-        else if (strcmp(argv[i], "-N") == 0)
+        else if (strcmp(argv[i], "-P") == 0)
         {
             arg_nostart = 1;
         }
-        else if (strcmp(argv[i], "-i") == 0)
-        {
-            arg_inputmode = 1;
-        }
         else
         {
-            eprintf("Unknown option: %s\n", argv[i]);
+            printf("Unknown option: %s\n", argv[i]);
             return 1;
         }
     }
@@ -787,7 +837,7 @@ int main(int argc, char *argv[])
     const char *pipename = arg_pipename;
     if (pipename == NULL)
     {
-        return server(arg_nostart, arg_newconsole, arg_inputmode);
+        return server(arg_nostart, arg_newconsole);
     }
 
     return client(pipename, arg_cmdline, arg_columns, arg_lines);
