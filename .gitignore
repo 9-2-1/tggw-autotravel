@@ -21,3 +21,8 @@ tauto.db
 
 # script
 *.cmd
+
+# C
+*.o
+*.exe
+*cppcheck*
