@@ -6,7 +6,7 @@
 #include <time.h>
 #include <windows.h>
 
-#define MSG_SIZE 32768
+#define MSG_SIZE (128 * 1024)
 char *default_cmdline = "cmd.exe";
 
 char *make_pipe_name()
@@ -597,7 +597,11 @@ int client(const char *arg_pipename, const char *arg_cmdline, int arg_columns, i
                 {
                     CHAR_INFO *ci = &charinfo[y * scr_size.X + x];
                     struct ReplyScreenChar *rc = &state->buffer[y * scr_size.X + x];
-                    rc->charCode = ci->Char.UnicodeChar;
+#ifndef COMMON_LVB_TRAILING_BYTE
+#define COMMON_LVB_TRAILING_BYTE 0x0200
+#endif
+                    BOOL has_char = ((ci->Attributes & COMMON_LVB_TRAILING_BYTE) == 0);
+                    rc->charCode = has_char ? ci->Char.UnicodeChar : 0;
                     rc->color = ci->Attributes & 0xff;
                 }
             }

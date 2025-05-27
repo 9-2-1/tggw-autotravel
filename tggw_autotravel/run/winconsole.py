@@ -99,13 +99,15 @@ class RunWinConsole(RunBase):
         assert self.process.stdout is not None
         while True:
             reply = self.process.stdout.readline()
-            log.debug(f"reply: {reply[:80]}(...)")
+            replylog = repr(reply)
+            if len(replylog) > 80:
+                replylog = replylog[:80] + "..."
+            log.debug(f"reply: {replylog}")
             if reply.startswith("L "):
                 log.info(reply[2:])
             elif reply.startswith("X "):
                 raise RuntimeError(reply[2:])
             else:
-                # log.debug(f"reply: {reply}")
                 return bytes.fromhex(reply)
 
     def alive(self) -> bool:
@@ -149,7 +151,7 @@ class RunWinConsole(RunBase):
             for x in range(columns):
                 charbytes = reply[char_offset : char_offset + char_length]
                 charcode, color = struct.unpack(char_format_str, charbytes)
-                ch = chr(charcode)
+                ch = chr(charcode) if charcode != 0 else ""
                 fg = Color(color % 16)
                 bg = Color(color // 16)
                 char = Char(ch, fg, bg)
