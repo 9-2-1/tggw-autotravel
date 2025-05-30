@@ -5,7 +5,7 @@ from .base import ControllerBase
 from ..screen import Screen
 
 from ..getch import GetchMSVCRT
-from ..run import RunBase, RunWinPTY
+from ..run import RunBase, RunWinPTY, RunWinConsole
 from ..tui import TUIColorama
 
 log = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class Controller(ControllerBase):
         """
         if self.game is not None:
             raise RuntimeError("Game already running")
-        self.game = RunWinPTY(
+        self.game = RunWinConsole(
             "cmd.exe",
             "/c",
             "The Ground Gives Way.exe",
