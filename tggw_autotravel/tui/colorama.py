@@ -1,9 +1,10 @@
-from .base import TUIBase
-from ..screen import Screen, Color
-
+from typing import Optional
 import colorama
 import pytermgui.win32console
 import os
+
+from .base import TUIBase
+from ..screen import Screen, Color
 
 colorfg = {
     Color.BLACK: colorama.Fore.BLACK,
@@ -48,7 +49,7 @@ class TUIColorama(TUIBase):
         self.lines = lines
         self.columns = columns
         self.screen = Screen(lines, columns)
-        self.drawn_screen = Screen(lines, columns, empty=True)
+        self.drawn_screen: Optional[Screen] = None
         self.scr_size = os.get_terminal_size()
         self.alt_buffer_context = pytermgui.context_managers.alt_buffer()
         colorama.init()
@@ -61,12 +62,16 @@ class TUIColorama(TUIBase):
         new_size = os.get_terminal_size()
         if new_size != self.scr_size:
             # reset drawnscreen
-            self.drawn_screen = Screen(self.lines, self.columns, empty=True)
+            self.drawn_screen = None
             self.scr_size = new_size
+        force_draw = False
+        if self.drawn_screen is None:
+            force_draw = True
+            self.drawn_screen = Screen(self.lines, self.columns)
         for y in range(min(self.screen.lines, self.drawn_screen.lines)):
             for x in range(min(self.screen.columns, self.drawn_screen.columns)):
                 char = self.screen.buffer[y][x]
-                if self.drawn_screen.buffer[y][x] != char:
+                if force_draw or self.drawn_screen.buffer[y][x] != char:
                     self.drawn_screen.buffer[y][x] = char
                     print(colorama.Cursor.POS(x + 1, y + 1), end="")
                     print(colorfg[char.fg] + colorbg[char.bg] + char.char, end="")

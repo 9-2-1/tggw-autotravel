@@ -79,12 +79,12 @@ class Char:
 
 
 class Screen:
-    def __init__(self, lines: int, columns: int, empty: bool = False) -> None:
+    def __init__(self, lines: int, columns: int) -> None:
         self.lines = lines
         self.columns = columns
         self.buffer = [
             [
-                Char("" if empty else " ", Color.WHITE, Color.BLACK)
+                Char(" ", Color.WHITE, Color.BLACK)
                 for _ in range(columns)
             ]
             for _ in range(lines)
