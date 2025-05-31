@@ -83,10 +83,7 @@ class Screen:
         self.lines = lines
         self.columns = columns
         self.buffer = [
-            [
-                Char(" ", Color.WHITE, Color.BLACK)
-                for _ in range(columns)
-            ]
+            [Char(" ", Color.WHITE, Color.BLACK) for _ in range(columns)]
             for _ in range(lines)
         ]
         self.cursor = Cursor(0, 0, 0)
