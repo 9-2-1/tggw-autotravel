@@ -12,7 +12,7 @@ CYCLE_TIME = 0.01
 def main() -> None:
     try:
         logging.basicConfig(
-            level=logging.DEBUG,
+            level=logging.INFO,
             filename="main.log",
             filemode="a",
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",

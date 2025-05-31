@@ -1,6 +1,6 @@
 from typing import Optional
 import colorama
-import pytermgui.win32console
+import pytermgui
 import os
 
 from .base import TUIBase
